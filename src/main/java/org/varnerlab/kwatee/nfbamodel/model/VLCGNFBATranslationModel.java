@@ -24,33 +24,25 @@ import java.util.Hashtable;
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * <p>
- * Created by jeffreyvarner on 11/22/15.
+ * Created by jeffreyvarner on 10/19/15.
  */
-public class VLCGNFBABiochemistryModel implements VLCGNFBAModelComponent {
+public class VLCGNFBATranslationModel implements VLCGNFBAModelComponent {
 
-    // Instance variables -
+    // instance variables -
     private Hashtable _model_component_table = new Hashtable();
 
     // hastable keys -
-    public static final String REACTION_ENZYME_SYMBOL = "reaction_enzyme_symbol";
-    public static final String REACTION_COMPARTMENT_SYMBOL = "reaction_compartment_symbol";
-    public static final String REACTION_NAME = "reaction_symbol";
-    public static final String REACTION_FORWARD = "reaction_forward";
-    public static final String REACTION_REVERSE = "reaction_reverse";
-    public static final String REACTION_REACTANTS = "reaction_reactants";
-    public static final String REACTION_PRODUCTS = "reaction_products";
-    public static final String RAW_RECORD = "raw_reaction_string";
-    public static final String FORMATTED_RAW_RECORD = "formatted_raw_record";
-
-    public static final String BIOCHEMISTRY_REACTION_REACTANT_VECTOR = "reactant_vector";
-    public static final String BIOCHEMISTRY_REACTION_PRODUCT_VECTOR = "product_vector";
-    public static final String BIOCHEMISTRY_REACTION_ENZYME_MODEL = "enzyme_model";
+    public static final String TRANSLATION_REACTION_NAME = "reaction_name";
+    public static final String TRANSLATION_MRNA_SYMBOL = "MRNA_SYMBOL";
+    public static final String TRANSLATION_PROTEIN_SYMBOL = "PROTEIN_SYMBOL";
+    public static final String TRANSLATION_RIBOSOME_SYMBOL = "RIBOSOME_SYMBOL";
+    public static final String TRANSLATION_REACTION_RAW_STRING = "raw_rxn_string";
 
     @Override
     public Object getModelComponent(String key) throws Exception {
 
         if (key == null || _model_component_table.containsKey(key) == false){
-            throw new Exception("Missing biochemical reaction component. Can't find key = "+key+" table: "+_model_component_table);
+            throw new Exception("Missing translation reaction component. Can't find key = "+key);
         }
 
         return _model_component_table.get(key);

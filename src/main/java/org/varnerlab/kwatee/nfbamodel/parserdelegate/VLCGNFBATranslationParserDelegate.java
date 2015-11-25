@@ -1,7 +1,6 @@
 package org.varnerlab.kwatee.nfbamodel.parserdelegate;
 
-import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBABiochemistryModel;
-import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBAModelComponent;
+import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBATranslationModel;
 
 import java.util.StringTokenizer;
 
@@ -29,20 +28,19 @@ import java.util.StringTokenizer;
  * <p>
  * Created by jeffreyvarner on 11/22/15.
  */
-public class VLCGFBABiochemistryParserDelegate implements VLCGParserHandlerDelegate {
+public class VLCGNFBATranslationParserDelegate implements VLCGParserHandlerDelegate {
 
     // Instance variables -
-    private VLCGNFBAModelComponent _model = null;
-
+    private VLCGNFBATranslationModel _model = null;
+    
     @Override
     public Object parseLine(String line) throws Exception {
 
-        // Method variables -
-        _model = new VLCGNFBABiochemistryModel();
+        // ok, create a model instance -
+        _model = new VLCGNFBATranslationModel();
 
-        // cache line -
-        _model.setModelComponent(VLCGNFBABiochemistryModel.FORMATTED_RAW_RECORD,_formatBiochemistryString(line));
-        _model.setModelComponent(VLCGNFBABiochemistryModel.RAW_RECORD,line);
+        // cache the raw string -
+        _model.setModelComponent(VLCGNFBATranslationModel.TRANSLATION_REACTION_RAW_STRING,_formatReactionString(line));
 
         // Parse this line -
         StringTokenizer stringTokenizer = new StringTokenizer(line,",");
@@ -52,33 +50,23 @@ public class VLCGFBABiochemistryParserDelegate implements VLCGParserHandlerDeleg
             // Get the token -
             String token = (String) stringTokenizer.nextToken();
 
-            // record is:
-            // name[1],compartment[2],reactant_string[3],product_string[4],reverse[5],forward[6];
-            if (counter == 1){
-                _model.setModelComponent(VLCGNFBABiochemistryModel.REACTION_NAME,token);
-            }
-            else if (counter == 2){
-                String strTmp = ((String)token).replace("-", "_");
-                _model.setModelComponent(VLCGNFBABiochemistryModel.REACTION_ENZYME_SYMBOL,strTmp);
-            }
-            else if (counter == 3){
-                String strTmp = ((String)token).replace("-", "_");
-                _model.setModelComponent(VLCGNFBABiochemistryModel.REACTION_REACTANTS,strTmp);
-            }
-            else if (counter == 4){
-                String strTmp = ((String)token).replace("-", "_");
-                _model.setModelComponent(VLCGNFBABiochemistryModel.REACTION_PRODUCTS,strTmp);
-            }
-            else if (counter == 5){
-                _model.setModelComponent(VLCGNFBABiochemistryModel.REACTION_REVERSE,token);
-            }
-            else if (counter == 6){
-                // remove the ;
-                String strTmp = token.substring(0,token.length() - 1);
-                _model.setModelComponent(VLCGNFBABiochemistryModel.REACTION_FORWARD,strTmp);
+            if (counter == 1) {
+                _model.setModelComponent(VLCGNFBATranslationModel.TRANSLATION_REACTION_NAME,token);
+            } else if (counter == 2) {
+
+                String strTmp = ((String) token).replace("-", "_");
+                _model.setModelComponent(VLCGNFBATranslationModel.TRANSLATION_MRNA_SYMBOL, strTmp);
+            } else if (counter == 3) {
+
+                String strTmp = ((String) token).replace("-", "_");
+                _model.setModelComponent(VLCGNFBATranslationModel.TRANSLATION_PROTEIN_SYMBOL, strTmp);
+            } else if (counter == 4) {
+
+                String strTmp = token.substring(0, token.length() - 1);
+                _model.setModelComponent(VLCGNFBATranslationModel.TRANSLATION_RIBOSOME_SYMBOL, strTmp);
             }
             else {
-                throw new Exception("The parseLine method of "+this.getClass().toString() + " does not support > seven tokens. Incorrect format for line: "+line);
+                throw new Exception(this.getClass().toString() + " does not support > 4 tokens. Incorrect format for line:"+line);
             }
 
             // update the counter -
@@ -89,13 +77,11 @@ public class VLCGFBABiochemistryParserDelegate implements VLCGParserHandlerDeleg
         return _model;
     }
 
-    // parse -
-    private String _formatBiochemistryString(String line) throws Exception {
+    private String _formatReactionString(String line) throws Exception {
 
         // method variables -
         int counter = 1;
         StringBuffer buffer = new StringBuffer();
-        String enzyme_symbol = "[]";
 
         // split around the ','
         StringTokenizer stringTokenizer = new StringTokenizer(line,",");
@@ -109,15 +95,10 @@ public class VLCGFBABiochemistryParserDelegate implements VLCGParserHandlerDeleg
                 buffer.append(": ");
             }
             else if (counter == 2){
-                enzyme_symbol = token;
+                buffer.append(token);
+                buffer.append(" = ");
             }
             else if (counter == 3){
-                buffer.append(token);
-                buffer.append(" -(");
-                buffer.append(enzyme_symbol);
-                buffer.append(")-> ");
-            }
-            else if (counter == 4){
                 buffer.append(token);
             }
 
@@ -128,5 +109,4 @@ public class VLCGFBABiochemistryParserDelegate implements VLCGParserHandlerDeleg
         // return the buffer -
         return buffer.toString();
     }
-
 }

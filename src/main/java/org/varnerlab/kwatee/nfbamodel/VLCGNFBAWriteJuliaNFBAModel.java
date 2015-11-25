@@ -72,6 +72,8 @@ public class VLCGNFBAWriteJuliaNFBAModel implements VLCGOutputHandler {
             String logic_method_name = attribute_map.getNamedItem("logic_method").getNodeValue();
             String path_method_name = attribute_map.getNamedItem("path_method").getNodeValue();
 
+            System.out.println("Calling logic_method_name = "+logic_method_name+" is model_wrapper ok? "+model_wrapper);
+
             // Build a logic method from name, and call the method -
             Method logic_method_instance = _model_delegate.getClass().getMethod(logic_method_name,model_wrapper.getClass(),_transformation_properties_tree.getClass());
             String buffer = (String)logic_method_instance.invoke(_model_delegate,model_wrapper,_transformation_properties_tree);
@@ -86,8 +88,13 @@ public class VLCGNFBAWriteJuliaNFBAModel implements VLCGOutputHandler {
     }
 
     @Override
-    public void setPropertiesTree(VLCGTransformationPropertyTree vlcgTransformationPropertyTree) {
+    public void setPropertiesTree(VLCGTransformationPropertyTree properties_tree) {
 
+        if (properties_tree == null){
+            return;
+        }
+
+        _transformation_properties_tree = properties_tree;
     }
 
     // Private helper methods -

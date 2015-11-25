@@ -1,7 +1,6 @@
 package org.varnerlab.kwatee.nfbamodel;
 
 import org.w3c.dom.Document;
-
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathFactory;
 
@@ -37,11 +36,10 @@ public class VLCGNFBAModelTreeWrapper {
     private XPath _xpath = _xpath_factory.newXPath();
 
     // constructor -
-    public void VLCGNFBAModelTreeWrapper(Document document){
+    public VLCGNFBAModelTreeWrapper(Document document){
 
         // grab the document -
         _model_tree = document;
     }
-
 
 }

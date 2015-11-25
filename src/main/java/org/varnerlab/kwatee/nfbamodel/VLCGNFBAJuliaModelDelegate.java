@@ -87,4 +87,64 @@ public class VLCGNFBAJuliaModelDelegate {
         // return -
         return buffer.toString();
     }
+
+    public String buildDriverFunctionBuffer(VLCGNFBAModelTreeWrapper model_tree, VLCGTransformationPropertyTree property_tree) throws Exception {
+
+        // String buffer -
+        StringBuffer driver = new StringBuffer();
+
+        // We need to get the imports -
+        String balance_filename = property_tree.lookupKwateeBalanceFunctionName()+".jl";
+        driver.append("include(\"");
+        driver.append(balance_filename);
+        driver.append("\")\n");
+        driver.append("using Sundials;\n");
+        driver.append("\n");
+
+        // Copyright notice -
+        String copyright = copyrightFactory.getJuliaCopyrightHeader();
+        driver.append(copyright);
+
+        // Get the function name -
+        String function_name = property_tree.lookupKwateeDriverFunctionName();
+        driver.append("function ");
+        driver.append(function_name);
+        driver.append("(TSTART,TSTOP,Ts,data_dictionary)\n");
+
+        driver.append("# ----------------------------------------------------------------------------------- #\n");
+        driver.append("# ");
+        driver.append(function_name);
+        driver.append(".jl was generated using the Kwatee code generation system.\n");
+        driver.append("# ");
+        driver.append(function_name);
+        driver.append(": Solves model equations from TSTART to TSTOP given parameters in data_dictionary.\n");
+        driver.append("# Username: ");
+        driver.append(property_tree.lookupKwateeModelUsername());
+        driver.append("\n");
+        driver.append("# Type: ");
+        driver.append(property_tree.lookupKwateeModelType());
+        driver.append("\n");
+        driver.append("# Version: ");
+        driver.append(property_tree.lookupKwateeModelVersion());
+        driver.append("\n");
+        driver.append("# Generation timestamp: ");
+        driver.append(date_formatter.format(today));
+        driver.append("\n");
+        driver.append("# \n");
+        driver.append("# Input arguments: \n");
+        driver.append("# TSTART  - Time start \n");
+        driver.append("# TSTOP  - Time stop \n");
+        driver.append("# Ts - Time step \n");
+        driver.append("# data_dictionary  - Data dictionary instance (holds model parameters) \n");
+        driver.append("# \n");
+        driver.append("# Return arguments: \n");
+        driver.append("# TSIM - Simulation time vector \n");
+        driver.append("# X - Simulation state array (NTIME x NSPECIES) \n");
+        driver.append("# ----------------------------------------------------------------------------------- #\n");
+        driver.append("\n");
+
+        // return -
+        return driver.toString();
+    }
+
 }

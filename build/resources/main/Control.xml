@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Model>
+
+    <Generation>
+        <file logic_method="buildDriverFunctionBuffer" path_method="lookupKwateeDriverFunctionFilePath"/>
+        <file logic_method="buildDataDictionaryFunctionBuffer" path_method="lookupKwateeDataDictionaryFilePath"/>
+    </Generation>
+
+
+
+</Model>
