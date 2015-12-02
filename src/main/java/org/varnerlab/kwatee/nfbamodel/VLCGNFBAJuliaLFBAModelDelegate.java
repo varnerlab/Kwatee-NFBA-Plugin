@@ -212,7 +212,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             String balanced = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_BALANCED_FLAG);
 
             // write the code -
-            buffer.append("# ");
+            buffer.append("# species_symbol: ");
             buffer.append(species_index);
             buffer.append(" ");
             buffer.append(symbol);
