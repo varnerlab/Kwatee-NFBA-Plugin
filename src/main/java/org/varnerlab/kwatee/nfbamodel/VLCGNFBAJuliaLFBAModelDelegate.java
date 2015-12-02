@@ -379,7 +379,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("include(\"");
         driver.append(balance_filename);
         driver.append("\")\n");
-        driver.append("using GLPK;\n");
+        driver.append("using GLPK\n");
         driver.append("\n");
 
         // Copyright notice -
