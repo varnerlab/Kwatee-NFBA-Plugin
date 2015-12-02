@@ -461,11 +461,12 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tlower_bound = flux_model.flux_lower_bound;\n");
         driver.append("\tupper_bound = flux_model.flux_upper_bound;\n");
         driver.append("\tflux_symbol = flux_model.flux_symbol;\n");
+        driver.append("\tflux_constraint_type = flux_model.flux_constraint_type;\n");
         driver.append("\tobj_coeff = flux_model.flux_obj_coeff;\n");
         driver.append("\n");
         driver.append("\t# Set the bounds in GLPK - \n");
         driver.append("\tGLPK.set_col_name(lp_problem, flux_index, flux_symbol);\n");
-        driver.append("\tGLPK.set_col_bnds(lp_problem, flux_index, GLPK.DB, lower_bound, upper_bound);\n");
+        driver.append("\tGLPK.set_col_bnds(lp_problem, flux_index, flux_constraint_type, lower_bound, upper_bound);\n");
         driver.append("\n");
         driver.append("\t# Set the objective function value in GLPK - \n");
         driver.append("\tGLPK.set_obj_coef(lp_problem, flux_index, obj_coeff);\n");
