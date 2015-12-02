@@ -158,11 +158,12 @@ public class VLCGNFBAModelTreeWrapper {
 
             // Lookup data for this reaction -
             String reaction_name = attributes.getNamedItem("name").getNodeValue();
-            //... more later ...
+            String formatted_record = attributes.getNamedItem("formatted_record").getNodeValue();
 
             // Build reaction wrapper -
             VLCGNFBABiochemistryReactionModel reaction_model = new VLCGNFBABiochemistryReactionModel();
             reaction_model.setModelComponent(VLCGNFBABiochemistryReactionModel.REACTION_NAME,reaction_name);
+            reaction_model.setModelComponent(VLCGNFBABiochemistryReactionModel.FORMATTED_RAW_RECORD,formatted_record);
 
             // add to the array, go around again -
             reaction_model_array.add(reaction_model);

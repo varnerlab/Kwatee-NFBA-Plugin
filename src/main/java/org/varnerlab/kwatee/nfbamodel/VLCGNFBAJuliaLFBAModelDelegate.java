@@ -304,6 +304,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
             // Get data from the reaction model -
             String flux_symbol = (String)reaction_model.getModelComponent(VLCGNFBABiochemistryReactionModel.REACTION_NAME);
+            String comment_line = (String)reaction_model.getModelComponent(VLCGNFBABiochemistryReactionModel.FORMATTED_RAW_RECORD);
 
             // ok, write the record -
             String julia_model_name = flux_symbol+"_model";
@@ -312,8 +313,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             buffer.append("# ");
             buffer.append(reaction_index);
             buffer.append(" ");
-            buffer.append(flux_symbol);
-            buffer.append(" - \n");
+            buffer.append(comment_line);
+            buffer.append("\n");
 
             // declaration line -
             buffer.append(julia_model_name);
