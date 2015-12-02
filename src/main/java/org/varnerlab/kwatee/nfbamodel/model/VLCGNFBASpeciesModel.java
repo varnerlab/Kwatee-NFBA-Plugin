@@ -37,6 +37,7 @@ public class VLCGNFBASpeciesModel implements VLCGNFBAModelComponent {
     public static final String SPECIES_RULE_TYPE = "species_rule_type";
     public static final String SPECIES_SPECIES_TYPE = "species_type";
     public static final String SPECIES_INITIAL_CONDITION = "species_initial_condition";
+    public static final String SPECIES_BALANCED_FLAG = "species_balanced_flag";
 
     public static final String RAW_RECORD = "raw_record";
 

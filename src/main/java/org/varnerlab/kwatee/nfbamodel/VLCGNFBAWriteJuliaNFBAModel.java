@@ -45,7 +45,7 @@ public class VLCGNFBAWriteJuliaNFBAModel implements VLCGOutputHandler {
 
     // Instance variables -
     private VLCGTransformationPropertyTree _transformation_properties_tree = null;
-    private VLCGNFBAJuliaModelDelegate _model_delegate = new VLCGNFBAJuliaModelDelegate();
+    private VLCGNFBAJuliaNFBAModelDelegate _model_delegate = new VLCGNFBAJuliaNFBAModelDelegate();
     private XPathFactory _xpath_factory = XPathFactory.newInstance();
     private XPath _xpath = _xpath_factory.newXPath();
     private Document _generation_tree = null;

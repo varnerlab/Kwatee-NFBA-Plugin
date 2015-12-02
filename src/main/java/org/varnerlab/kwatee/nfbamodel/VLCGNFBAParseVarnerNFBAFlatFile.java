@@ -602,7 +602,17 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
                 buffer.append("\t\t");
                 buffer.append("<species symbol=\"");
                 buffer.append(species_symbol);
-                buffer.append("\" initial_condition=\"0.0\"/>\n");
+                buffer.append("\" is_species_balanced=\"");
+
+                // do we have an external species?
+                if (species_symbol.contains("_xt")){
+                    buffer.append("false\"");
+                }
+                else {
+                    buffer.append("true\"");
+                }
+
+                buffer.append(" initial_condition=\"0.0\"/>\n");
             }
         }
 
