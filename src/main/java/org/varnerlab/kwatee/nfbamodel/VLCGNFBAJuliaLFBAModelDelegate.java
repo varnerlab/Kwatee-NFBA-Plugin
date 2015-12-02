@@ -27,6 +27,7 @@ package org.varnerlab.kwatee.nfbamodel;
 
 import org.varnerlab.kwatee.foundation.VLCGCopyrightFactory;
 import org.varnerlab.kwatee.foundation.VLCGTransformationPropertyTree;
+import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBABiochemistryReactionModel;
 import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBASpeciesModel;
 
 import java.text.SimpleDateFormat;
@@ -40,13 +41,34 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
     private java.util.Date today = Calendar.getInstance().getTime();
     private SimpleDateFormat date_formatter = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss");
 
+    public String buildStoichiometricMatrixBuffer(VLCGNFBAModelTreeWrapper model_tree, VLCGTransformationPropertyTree property_tree) throws Exception {
+
+        // Method variables -
+        StringBuilder buffer = new StringBuilder();
+
+        // stoichiometric matrix is NSPECIES x NREACTIONS big -
+        ArrayList<VLCGNFBASpeciesModel> species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
+        for (VLCGNFBASpeciesModel species_model : species_model_array){
+
+            // Get species symbol, and home compartment -
+            String species_symbol = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+
+            // ok, we have a biochemical species -
+            String row_string = model_tree.getStoichiometricCoefficientsForSpeciesInModel(species_symbol);
+            buffer.append(row_string);
+        }
+
+        return buffer.toString();
+    }
+
+
     public String buildDataDictionaryFunctionBuffer(VLCGNFBAModelTreeWrapper model_tree, VLCGTransformationPropertyTree property_tree) throws Exception {
 
         // Method variables -
         StringBuilder buffer = new StringBuilder();
 
         // We are using GLPK constants -
-        buffer.append("include(\"GLPK_constants.jl\");\n");
+        buffer.append("using GLPK\n");
 
         // Copyright notice -
         String copyright = copyrightFactory.getJuliaCopyrightHeader();
@@ -58,14 +80,15 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("type SpeciesModel\n");
         buffer.append("\n");
         buffer.append("\t# Model instance variables - \n");
-        buffer.append("\tspecies_symbol::String\n");
+        buffer.append("\tspecies_index::Int\n");
+        buffer.append("\tspecies_symbol::AbstractString\n");
         buffer.append("\tspecies_lower_bound::Float64\n");
         buffer.append("\tspecies_upper_bound::Float64\n");
         buffer.append("\tspecies_constraint_type::Int32\n");
         buffer.append("\n");
         buffer.append("\t# Constructor - \n");
         buffer.append("\tfunction SpeciesModel()\n");
-        buffer.append("\t\tthis = new ();\n");
+        buffer.append("\t\tthis = new();\n");
         buffer.append("\tend\n");
         buffer.append("end\n");
 
@@ -74,7 +97,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("type FluxModel\n");
         buffer.append("\n");
         buffer.append("\t# Model instance variables - \n");
-        buffer.append("\tflux_symbol::String\n");
+        buffer.append("\tflux_index::Int\n");
+        buffer.append("\tflux_symbol::AbstractString\n");
         buffer.append("\tflux_lower_bound::Float64\n");
         buffer.append("\tflux_upper_bound::Float64\n");
         buffer.append("\tflux_constraint_type::Int32\n");
@@ -82,7 +106,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\n");
         buffer.append("\t# Constructor - \n");
         buffer.append("\tfunction FluxModel()\n");
-        buffer.append("\t\tthis = new ();\n");
+        buffer.append("\t\tthis = new();\n");
         buffer.append("\tend\n");
         buffer.append("end\n");
 
@@ -134,12 +158,12 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         // formulate species models -
         buffer.append("\n");
         buffer.append("# Generate the species model array - \n");
-        buffer.append("species_model_array = buildSpeciesModelArray();\n");
+        buffer.append("species_model_dictionary = buildSpeciesModelDictionary();\n");
 
         // formulate the flux models -
         buffer.append("\n");
         buffer.append("# Generate the flux model array - \n");
-        buffer.append("flux_model_array = buildFluxModelArray();\n");
+        buffer.append("flux_model_dictionary = buildFluxModelDictionary();\n");
 
         // Is this min or max?
         buffer.append("\n");
@@ -151,8 +175,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("data_dictionary = Dict();\n");
         buffer.append("data_dictionary[\"STOICHIOMETRIC_MATRIX\"] = S;\n");
         buffer.append("data_dictionary[\"MIN_FLAG\"] = min_flag;\n");
-        buffer.append("data_dictionary[\"SPECIES_MODEL_ARRAY\"] = species_model_array;\n");
-        buffer.append("data_dictionary[\"FLUX_MODEL_ARRAY\"] = flux_model_array;\n");
+        buffer.append("data_dictionary[\"SPECIES_MODEL_DICTIONARY\"] = species_model_dictionary;\n");
+        buffer.append("data_dictionary[\"FLUX_MODEL_DICTIONARY\"] = flux_model_dictionary;\n");
         buffer.append("# ----------------------------------------------------------------------------------- #\n");
 
         // last line -
@@ -162,48 +186,182 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         // Build the buildSpeciesModelArray function -
         buffer.append("\n");
         buffer.append("# ----------------------------------------------------------------------------------- #\n");
-        buffer.append("# Helper function: buildSpeciesModelArray\n");
-        buffer.append("# Constructs an array of species models\n");
+        buffer.append("# Helper function: buildSpeciesModelDictionary\n");
+        buffer.append("# Constructs a dictionary of species models\n");
         buffer.append("# Generated using the Kwatee code generation system \n");
         buffer.append("#\n");
         buffer.append("# Input arguments: \n");
         buffer.append("# N/A\n");
         buffer.append("# \n");
         buffer.append("# Return arguments: \n");
-        buffer.append("# species_model_array  - number_of_species x 1 array of SpeciesModels \n");
+        buffer.append("# species_model_dictionary  - Dictionary of SpeciesModels key'd by species symbol \n");
         buffer.append("# ----------------------------------------------------------------------------------- #\n");
-        buffer.append("function buildSpeciesModelArray()\n");
+        buffer.append("function buildSpeciesModelDictionary()\n");
         buffer.append("\n");
         buffer.append("# function variables - \n");
-        buffer.append("species_model_array = SpeciesModel[];\n");
-
+        buffer.append("species_model_dictionary = Dict{AbstractString,SpeciesModel}();\n");
+        buffer.append("\n");
 
         // ok - lets build the species models -
         ArrayList<VLCGNFBASpeciesModel> species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
-        
+        int species_index = 1;
+        for (VLCGNFBASpeciesModel species_model : species_model_array){
+
+            // Get data -
+            String symbol = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+            String balanced = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_BALANCED_FLAG);
+
+            // write the code -
+            buffer.append("# ");
+            buffer.append(species_index);
+            buffer.append(" ");
+            buffer.append(symbol);
+            buffer.append(" - \n");
+            buffer.append(symbol);
+            buffer.append("_model = SpeciesModel();\n");
+
+            // Setup the index -
+            buffer.append(symbol);
+            buffer.append("_model.species_index = ");
+            buffer.append(species_index++);
+            buffer.append(";\n");
+
+            // Setup the symbol -
+            buffer.append(symbol);
+            buffer.append("_model.species_symbol = string(\"");
+            buffer.append(symbol);
+            buffer.append("\");\n");
+
+            // Setup the type -
+            buffer.append(symbol);
+            buffer.append("_model.species_constraint_type = ");
+
+            if (balanced.equalsIgnoreCase("true")){
+
+                // balanced type = GLP_FX
+                buffer.append("GLPK.FX;\n");
+
+                // constraints are [0,0] -
+                buffer.append(symbol);
+                buffer.append("_model.species_lower_bound = 0.0;\n");
+
+                buffer.append(symbol);
+                buffer.append("_model.species_upper_bound = 0.0;\n");
+            }
+            else {
+
+                // unblanced = GLP_DB
+                buffer.append("GLPK.DB;\n");
+
+                // constraints are [0,0] -
+                buffer.append(symbol);
+                buffer.append("_model.species_lower_bound = -1.0;\n");
+
+                buffer.append(symbol);
+                buffer.append("_model.species_upper_bound = 1.0;\n");
+            }
 
 
-        buffer.append("return species_model_array;\n");
+            // add this model to the array -
+            buffer.append("species_model_dictionary[\"");
+            buffer.append(symbol);
+            buffer.append("\"] = ");
+            buffer.append(symbol);
+            buffer.append("_model;\n");
+            buffer.append(symbol);
+            buffer.append("_model = 0;\n");
+
+            // add a trailing new line -
+            buffer.append("\n");
+        }
+
+        buffer.append("return species_model_dictionary;\n");
         buffer.append("end\n");
 
         // Build the buildFluxModelArray function -
         buffer.append("\n");
         buffer.append("# ----------------------------------------------------------------------------------- #\n");
-        buffer.append("# Helper function: buildFluxModelArray\n");
-        buffer.append("# Constructs an array of species models\n");
+        buffer.append("# Helper function: buildFluxModelDictionary\n");
+        buffer.append("# Constructs a dictionary of flux models\n");
         buffer.append("# Generated using the Kwatee code generation system \n");
         buffer.append("#\n");
         buffer.append("# Input arguments: \n");
         buffer.append("# N/A\n");
         buffer.append("# \n");
         buffer.append("# Return arguments: \n");
-        buffer.append("# flux_model_array  - number_of_fluxes x 1 array of FluxModels \n");
+        buffer.append("# flux_model_dictionary  - Dictionary of FluxModels key'd by flux symbol \n");
         buffer.append("# ----------------------------------------------------------------------------------- #\n");
-        buffer.append("function buildFluxModelArray()\n");
+        buffer.append("function buildFluxModelDictionary()\n");
         buffer.append("\n");
         buffer.append("# function variables - \n");
-        buffer.append("flux_model_array = FluxModel[];\n");
-        buffer.append("return flux_model_array;\n");
+        buffer.append("flux_model_dictionary = Dict{AbstractString,FluxModel}();\n");
+        buffer.append("\n");
+
+        // ok, get the fluxes from the model tree -
+        ArrayList<VLCGNFBABiochemistryReactionModel> reaction_model_array = model_tree.getListOfBiochemicalReactionModelsFromModelTree();
+        int reaction_index = 1;
+        for (VLCGNFBABiochemistryReactionModel reaction_model : reaction_model_array){
+
+            // Get data from the reaction model -
+            String flux_symbol = (String)reaction_model.getModelComponent(VLCGNFBABiochemistryReactionModel.REACTION_NAME);
+
+            // ok, write the record -
+            String julia_model_name = flux_symbol+"_model";
+
+            // comment line -
+            buffer.append("# ");
+            buffer.append(reaction_index);
+            buffer.append(" ");
+            buffer.append(flux_symbol);
+            buffer.append(" - \n");
+
+            // declaration line -
+            buffer.append(julia_model_name);
+            buffer.append(" = FluxModel();\n");
+
+            // index -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_index = ");
+            buffer.append(reaction_index++);
+            buffer.append("\n");
+
+            // name -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_symbol = \"");
+            buffer.append(flux_symbol);
+            buffer.append("\"\n");
+
+            // type -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_constraint_type = GLPK.DB;\n");
+
+            // lower bound -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_lower_bound = 0.0;\n");
+
+            // upper bound -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_upper_bound = 1000.0;\n");
+
+            // object coeff -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_obj_coeff = 0.0;\n");
+
+            // add to the dictionary -
+            buffer.append("flux_model_dictionary[\"");
+            buffer.append(flux_symbol);
+            buffer.append("\"] = ");
+            buffer.append(julia_model_name);
+            buffer.append(";\n");
+            buffer.append(julia_model_name);
+            buffer.append(" = 0;\n");
+
+            // add a trailing new line -
+            buffer.append("\n");
+        }
+
+
+        buffer.append("return flux_model_dictionary;\n");
         buffer.append("end\n");
 
         // return -
@@ -294,12 +452,11 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         // setup default bounds on fluxes -
         driver.append("\n");
         driver.append("# Setup flux bounds, and objective function - \n");
-        driver.append("flux_model_array = data_dictionary[\"FLUX_MODEL_ARRAY\"];\n");
-        driver.append("flux_index_vector = collect(1:number_of_fluxes);\n");
-        driver.append("for flux_index in flux_index_vector\n");
+        driver.append("flux_model_dictionary = data_dictionary[\"FLUX_MODEL_DICTIONARY\"];\n");
+        driver.append("for (key,flux_model::FluxModel) in flux_model_dictionary\n");
         driver.append("\n");
         driver.append("\t# Get the default flux bounds and name - \n");
-        driver.append("\tflux_model = flux_model_array[species_index];\n");
+        driver.append("\tflux_index = flux_model.flux_index;\n");
         driver.append("\tlower_bound = flux_model.flux_lower_bound;\n");
         driver.append("\tupper_bound = flux_model.flux_upper_bound;\n");
         driver.append("\tflux_symbol = flux_model.flux_symbol;\n");
@@ -316,16 +473,15 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         // Setup constraints -
         driver.append("\n");
         driver.append("# Setup problem constraints for the metabolites - \n");
-        driver.append("species_model_array = data_dictionary[\"SPECIES_MODEL_ARRAY\"];\n");
-        driver.append("species_index_vector = collect(1:number_of_species);\n");
-        driver.append("for species_index in species_index_vector\n");
+        driver.append("species_model_dictionary = data_dictionary[\"SPECIES_MODEL_DICTIONARY\"];\n");
+        driver.append("for (key,species_model::SpeciesModel) in species_model_dictionary\n");
         driver.append("\n");
         driver.append("\t# Get data for the GLPK problem from the species model array - \n");
-        driver.append("\tspecies_model = species_model_array[species_index];\n");
+        driver.append("\tspecies_index = species_model.species_index;\n");
         driver.append("\tspecies_symbol = species_model.species_symbol;\n");
         driver.append("\tspecies_constraint_type = species_model.species_constraint_type;\n");
-        driver.append("\tspecies_balance_lower_bound = species_model.species_balance_lower_bound;\n");
-        driver.append("\tspecies_balance_upper_bound = species_model.species_balance_upper_bound;\n");
+        driver.append("\tspecies_lower_bound = species_model.species_lower_bound;\n");
+        driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
         driver.append("\n");
         driver.append("\t# Set the species bounds in GLPK - \n");
         driver.append("\tGLPK.set_row_name(lp_problem, species_index, species_symbol);\n");
@@ -339,6 +495,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("counter = 1;\n");
         driver.append("row_index_array = zeros(Int,number_of_species*number_of_fluxes);\n");
         driver.append("col_index_array = zeros(Int,number_of_species*number_of_fluxes);\n");
+        driver.append("species_index_vector = collect(1:number_of_species);\n");
+        driver.append("flux_index_vector = collect(1:number_of_fluxes);\n");
         driver.append("flat_stoichiometric_array = zeros(Float64,number_of_species*number_of_fluxes);\n");
         driver.append("for species_index in species_index_vector\n");
         driver.append("\tfor flux_index in flux_index_vector\n");
@@ -355,7 +513,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("# Set solver parameters \n");
         driver.append("solver_parameters = GLPK.SimplexParam();\n");
         driver.append("solver_parameters.msg_lev = GLPK.MSG_ERR;\n");
-        driver.append("param.presolve = GLPK.ON;\n");
+        driver.append("solver_parameters.presolve = GLPK.ON;\n");
         driver.append("GLPK.init_smcp(solver_parameters);\n");
 
         // Solve -

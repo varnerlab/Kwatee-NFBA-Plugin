@@ -1,5 +1,6 @@
 package org.varnerlab.kwatee.nfbamodel;
 
+import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBABiochemistryReactionModel;
 import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBASpeciesModel;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
@@ -54,6 +55,121 @@ public class VLCGNFBAModelTreeWrapper {
     // define a set of helper methods which are called by the model delegate to
     // to extract data from the AST -
     // ======================================================================== //
+
+    // get the dimensions of the system -
+    public String getStoichiometricCoefficientsForSpeciesInModel(String species_symbol) throws Exception {
+
+        // method variables -
+        StringBuilder row_buffer = new StringBuilder();
+
+        // how many *total* reactions do we have?
+        int number_of_reactions = this.calculateTheTotalNumberOfReactionTerms();
+
+        // Build a tmp array of zeros -
+        String[] tmp_array = new String[number_of_reactions];
+        for (int col_index = 0;col_index<number_of_reactions;col_index++){
+            tmp_array[col_index] = "0.0";
+        }
+
+        // Lookup reaction names that this species is a *reactant* in -
+        String reaction_name_xpath = ".//listOfReactions/reaction/listOfReactants/speciesReference[@species=\""+species_symbol+"\"]/../../@name";
+        NodeList reaction_name_list = _lookupPropertyCollectionFromTreeUsingXPath(reaction_name_xpath);
+        int number_of_local_reactions = reaction_name_list.getLength();
+        for (int local_reaction_index = 0;local_reaction_index<number_of_local_reactions;local_reaction_index++) {
+
+            // Get name value -
+            String local_reaction_name = reaction_name_list.item(local_reaction_index).getNodeValue();
+
+            // Get the reaction index -
+            String xpath_reaction_index = ".//listOfReactions/reaction[@name=\""+local_reaction_name+"\"]/@index";
+            String reaction_index = _lookupPropertyValueFromTreeUsingXPath(xpath_reaction_index);
+
+            // Get stoichiometric coefficient -
+            String xpath_stochiometric_coefficient = ".//listOfReactions/reaction[@name=\""+local_reaction_name+"\"]/listOfReactants/speciesReference[@species=\""+species_symbol+"\"]/@stoichiometry";
+            String stochiometric_coefficient = _lookupPropertyValueFromTreeUsingXPath(xpath_stochiometric_coefficient);
+
+            // update the tmp_array -
+            tmp_array[Integer.parseInt(reaction_index) - 1] = "-"+stochiometric_coefficient;
+        }
+
+        // Lookup reactions names that this species is a *product* in -
+        reaction_name_xpath = ".//listOfReactions/reaction/listOfProducts/speciesReference[@species=\""+species_symbol+"\"]/../../@name";
+        reaction_name_list = _lookupPropertyCollectionFromTreeUsingXPath(reaction_name_xpath);
+        number_of_local_reactions = reaction_name_list.getLength();
+        for (int local_reaction_index = 0;local_reaction_index<number_of_local_reactions;local_reaction_index++) {
+
+            // Get name value -
+            String local_reaction_name = reaction_name_list.item(local_reaction_index).getNodeValue();
+
+            // Get the reaction index -
+            String xpath_reaction_index = ".//listOfReactions/reaction[@name=\""+local_reaction_name+"\"]/@index";
+            String reaction_index = _lookupPropertyValueFromTreeUsingXPath(xpath_reaction_index);
+
+            // Get stoichiometric coefficient -
+            String xpath_stochiometric_coefficient = ".//listOfReactions/reaction[@name=\""+local_reaction_name+"\"]/listOfProducts/speciesReference[@species=\""+species_symbol+"\"]/@stoichiometry";
+            String stochiometric_coefficient = _lookupPropertyValueFromTreeUsingXPath(xpath_stochiometric_coefficient);
+
+            // update the tmp_array -
+            tmp_array[Integer.parseInt(reaction_index) - 1] = stochiometric_coefficient;
+        }
+
+        // populate the row_buffer -
+        int col_index = 0;
+        for (String element_value : tmp_array){
+            row_buffer.append(element_value);
+
+            if (col_index<number_of_reactions - 1){
+                row_buffer.append(" ");
+            }
+
+            col_index++;
+        }
+
+        // add a new-line -
+        row_buffer.append("\n");
+
+        // return -
+        return row_buffer.toString();
+    }
+
+    // how many reactions do we have?
+    public int calculateTheTotalNumberOfReactionTerms() throws Exception {
+
+        // get reaction list-
+        ArrayList<VLCGNFBABiochemistryReactionModel> reaction_model_array = this.getListOfBiochemicalReactionModelsFromModelTree();
+        return reaction_model_array.size();
+    }
+
+    // get list of reaction models from tree -
+    public ArrayList<VLCGNFBABiochemistryReactionModel> getListOfBiochemicalReactionModelsFromModelTree() throws Exception {
+
+        // Use xpath to lookup the reaction models, construct array and return -
+        ArrayList<VLCGNFBABiochemistryReactionModel> reaction_model_array = new ArrayList<VLCGNFBABiochemistryReactionModel>();
+
+        // Get the reaction models -
+        String xpath_reactions = ".//listOfReactions/reaction";
+        NodeList reaction_nodes = _lookupPropertyCollectionFromTreeUsingXPath(xpath_reactions);
+        int number_of_nodes = reaction_nodes.getLength();
+        for (int node_index = 0; node_index<number_of_nodes; node_index++){
+
+            // Get the attributes -
+            Node reaction_node = reaction_nodes.item(node_index);
+            NamedNodeMap attributes = reaction_node.getAttributes();
+
+            // Lookup data for this reaction -
+            String reaction_name = attributes.getNamedItem("name").getNodeValue();
+            //... more later ...
+
+            // Build reaction wrapper -
+            VLCGNFBABiochemistryReactionModel reaction_model = new VLCGNFBABiochemistryReactionModel();
+            reaction_model.setModelComponent(VLCGNFBABiochemistryReactionModel.REACTION_NAME,reaction_name);
+
+            // add to the array, go around again -
+            reaction_model_array.add(reaction_model);
+        }
+
+        return reaction_model_array;
+    }
 
     // Get the species models from tree -
     public ArrayList<VLCGNFBASpeciesModel> getListOfSpeciesModelsFromModelTree() throws Exception {
