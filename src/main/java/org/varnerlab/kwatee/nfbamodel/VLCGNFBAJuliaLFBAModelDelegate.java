@@ -234,33 +234,9 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
             // Setup the type -
             buffer.append(symbol);
-            buffer.append("_model.species_constraint_type = ");
-
-            if (balanced.equalsIgnoreCase("true")){
-
-                // balanced type = GLP_FX
-                buffer.append("GLPK.FX;\n");
-
-                // constraints are [0,0] -
-                buffer.append(symbol);
-                buffer.append("_model.species_lower_bound = 0.0;\n");
-
-                buffer.append(symbol);
-                buffer.append("_model.species_upper_bound = 0.0;\n");
-            }
-            else {
-
-                // unblanced = GLP_DB
-                buffer.append("GLPK.DB;\n");
-
-                // constraints are [0,0] -
-                buffer.append(symbol);
-                buffer.append("_model.species_lower_bound = -1.0;\n");
-
-                buffer.append(symbol);
-                buffer.append("_model.species_upper_bound = 1.0;\n");
-            }
-
+            buffer.append("_model.species_constraint_type = GLPK.LO;\n");
+            buffer.append(symbol);
+            buffer.append("_model.species_upper_bound = 0.0;\n");
 
             // add this model to the array -
             buffer.append("species_model_dictionary[\"");
@@ -390,7 +366,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         String function_name = property_tree.lookupKwateeDriverFunctionName();
         driver.append("function ");
         driver.append(function_name);
-        driver.append("(data_dictionary)\n");
+        driver.append("(species_abundance_array,specific_growth_rate,step_size,data_dictionary)\n");
 
         driver.append("# ----------------------------------------------------------------------------------- #\n");
         driver.append("# ");
@@ -482,7 +458,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tspecies_index = species_model.species_index;\n");
         driver.append("\tspecies_symbol = species_model.species_symbol;\n");
         driver.append("\tspecies_constraint_type = species_model.species_constraint_type;\n");
-        driver.append("\tspecies_lower_bound = species_model.species_lower_bound;\n");
+        driver.append("\tspecies_lower_bound = -1*(1-specific_growth_rate)*species_abundance_array[species_index];\n");
         driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
         driver.append("\n");
         driver.append("\t# Set the species bounds in GLPK - \n");
