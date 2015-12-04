@@ -5,6 +5,7 @@
         <file logic_method="buildDriverFunctionBuffer" path_method="lookupKwateeDriverFunctionFilePath"/>
         <file logic_method="buildDataDictionaryFunctionBuffer" path_method="lookupKwateeDataDictionaryFilePath"/>
         <file logic_method="buildStoichiometricMatrixBuffer" path_method="lookupKwateeStoichiometricMatrixFilePath"/>
+        <file logic_method="buildControlFunctionBuffer" path_method="lookupKwateeControlFunctionFilePath"/>
     </Generation>
 
 

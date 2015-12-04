@@ -2,6 +2,7 @@ package org.varnerlab.kwatee.nfbamodel;
 
 import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBABiochemistryReactionModel;
 import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBASpeciesModel;
+import org.varnerlab.kwatee.nfbamodel.model.VLCGSimpleControlLogicModel;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -11,6 +12,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.util.ArrayList;
+import java.util.Vector;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -55,6 +57,140 @@ public class VLCGNFBAModelTreeWrapper {
     // define a set of helper methods which are called by the model delegate to
     // to extract data from the AST -
     // ======================================================================== //
+    public int calculateTheTotalNumberOfControlTerms() throws Exception {
+
+        // method variables -
+        int number_of_control_terms = 0;
+
+        String xpath_string = ".//control/@name";
+        NodeList nodeList = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+        number_of_control_terms = nodeList.getLength();
+
+        // return -
+        return number_of_control_terms;
+    }
+
+    public String buildReactionCommentStringForReactionWithName(String reaction_name) throws Exception {
+
+        // Method variables -
+        String comment_string = "";
+
+        // Xpath -
+        String xpath_string = "//*[@name=\""+reaction_name+"\"]/@formatted_record";
+        System.out.println(xpath_string);
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        // We should have *only* a single node -
+        if (node_list.getLength()!=1){
+            throw new Exception("Reaction names must be unique. There appear to be multiple reactions named "+reaction_name);
+        }
+
+        Node reaction_node = node_list.item(0);
+        comment_string = reaction_node.getNodeValue();
+
+        // return -
+        return comment_string;
+    }
+
+    public String buildControlCommentStringForControlConnectionWithName(String reaction_name) throws Exception {
+
+        // Method variables -
+        String comment_string = "";
+
+        // Xpath -
+        String xpath_string = "//control[@name=\""+reaction_name+"\"]/@raw_control_string";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        // We should have *only* a single node -
+        if (node_list.getLength()!=1){
+            throw new Exception("Reaction names must be unique. There appear to be multiple reactions named "+reaction_name);
+        }
+
+        Node reaction_node = node_list.item(0);
+        comment_string = reaction_node.getNodeValue();
+
+        // return -
+        return comment_string;
+    }
+
+    public ArrayList<VLCGSimpleControlLogicModel> getControlModelListFromModelTreeForReactionWithName(String reaction_name) throws Exception {
+
+        // method variables -
+        ArrayList<VLCGSimpleControlLogicModel> control_vector = new ArrayList<VLCGSimpleControlLogicModel>();
+
+        // ok, check - do we have a control statement with this reaction name as the target?
+        String xpath_string = ".//control[@target=\""+reaction_name+"\"]";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+        int number_of_transfer_functions = node_list.getLength();
+        for (int transfer_function_index = 0;transfer_function_index<number_of_transfer_functions;transfer_function_index++){
+
+            // Get the node -
+            Node control_node = node_list.item(transfer_function_index);
+
+            // Get the data from this node -
+            NamedNodeMap attribute_map = control_node.getAttributes();
+            Node type_node = attribute_map.getNamedItem("type");
+            Node actor_node = attribute_map.getNamedItem("actor");
+            Node name_node = attribute_map.getNamedItem("name");
+
+            // Create a comment -
+            String comment = name_node.getNodeValue()+" target: "+reaction_name+" actor: "+actor_node.getNodeValue()+" type: "+type_node.getNodeValue();
+
+            // Build the wrapper -
+            VLCGSimpleControlLogicModel transfer_function_model = new VLCGSimpleControlLogicModel();
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_ACTOR,actor_node.getNodeValue());
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_TARGET,reaction_name);
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_TYPE,type_node.getNodeValue());
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_NAME,name_node.getNodeValue());
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_COMMENT,comment);
+
+            // add to the vector -
+            control_vector.add(transfer_function_model);
+        }
+
+        return control_vector;
+    }
+
+    public boolean isThisReactionRegulated(String reaction_name) throws Exception {
+
+        // method variables -
+        boolean return_flag = false;
+
+        // ok, check - do we have a control statement with this reaction name as the target?
+        String xpath_string = ".//control[@target=\""+reaction_name+"\"]";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        if (node_list.getLength()>0){
+            return_flag = true;
+        }
+
+        // return -
+        return return_flag;
+    }
+
+    public ArrayList<String> getListOfReactionNamesFromModelTree() throws Exception {
+
+        // method variables -
+        ArrayList<String> name_vector = new ArrayList<String>();
+
+        // Get reaction names -
+        String xpath_string = ".//reaction/@name";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        // ok, so we need to grab the node values, and return the string symbols
+        int number_of_nodes = node_list.getLength();
+        for (int node_index = 0; node_index < number_of_nodes; node_index++) {
+
+            // Grab the node value -
+            String node_value = node_list.item(node_index).getNodeValue();
+
+            if (name_vector.contains(node_value) == false) {
+                name_vector.add(node_value);
+            }
+        }
+
+        return name_vector;
+    }
 
     // get the dimensions of the system -
     public String getStoichiometricCoefficientsForSpeciesInModel(String species_symbol) throws Exception {

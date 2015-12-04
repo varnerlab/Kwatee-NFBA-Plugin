@@ -29,10 +29,13 @@ import org.varnerlab.kwatee.foundation.VLCGCopyrightFactory;
 import org.varnerlab.kwatee.foundation.VLCGTransformationPropertyTree;
 import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBABiochemistryReactionModel;
 import org.varnerlab.kwatee.nfbamodel.model.VLCGNFBASpeciesModel;
+import org.varnerlab.kwatee.nfbamodel.model.VLCGSimpleControlLogicModel;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Iterator;
+import java.util.Vector;
 
 public class VLCGNFBAJuliaLFBAModelDelegate {
 
@@ -150,10 +153,11 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
         // Get the path to the stoichiometric matrix -
         String fully_qualified_stoichiometric_matrix_path = property_tree.lookupKwateeStoichiometricMatrixFilePath();
-        buffer.append("S = float(open(readdlm,");
+        buffer.append("stoichiometric_matrix = float(open(readdlm,");
         buffer.append("\"");
         buffer.append(fully_qualified_stoichiometric_matrix_path);
         buffer.append("\"));\n");
+        buffer.append("(number_of_species,number_of_fluxes) = size(stoichiometric_matrix);\n");
 
         // formulate species models -
         buffer.append("\n");
@@ -171,12 +175,87 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("min_flag = true;\n");
 
         buffer.append("\n");
+        buffer.append("# Formulate control parameter array - \n");
+        int number_of_control_terms = model_tree.calculateTheTotalNumberOfControlTerms();
+        buffer.append("control_parameter_array = zeros(");
+        buffer.append(number_of_control_terms);
+        buffer.append(",2);\n");
+
+        ArrayList<String> reaction_name_list = model_tree.getListOfReactionNamesFromModelTree();
+        int control_index = 1;
+        for (String reaction_name : reaction_name_list){
+
+
+            if (model_tree.isThisReactionRegulated(reaction_name)) {
+
+                // Get the vector of transfer function wrappers -
+                ArrayList<VLCGSimpleControlLogicModel> control_model_vector = model_tree.getControlModelListFromModelTreeForReactionWithName(reaction_name);
+                for (VLCGSimpleControlLogicModel control_model : control_model_vector){
+
+                    // Get the comment from tghe control model
+                    String comment = (String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_COMMENT);
+                    String header_comment = model_tree.buildControlCommentStringForControlConnectionWithName((String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_NAME));
+
+                    // write the gain line -
+                    buffer.append("# ");
+                    buffer.append(header_comment);
+                    buffer.append("\n");
+                    buffer.append("control_parameter_array[");
+                    buffer.append(control_index);
+                    buffer.append(",1] = 0.1;\t#\t");
+                    buffer.append(control_index);
+                    buffer.append(" Gain: \t");
+                    buffer.append(comment);
+                    buffer.append("\n");
+
+                    // write the order line -
+                    buffer.append("control_parameter_array[");
+                    buffer.append(control_index);
+                    buffer.append(",2] = 1.0;\t#\t");
+                    buffer.append(control_index);
+                    buffer.append(" Order: \t");
+                    buffer.append(comment);
+                    buffer.append("\n\n");
+
+                    // update counter -
+                    control_index++;
+                }
+            }
+        }
+
+        // ok, we need to setup the bounds parameter array -
+        buffer.append("\n");
+        buffer.append("# Formulate bounds parameter array - \n");
+        buffer.append("bounds_parameter_array = [\n");
+        int reaction_counter = 1;
+        for (String reaction_name : reaction_name_list){
+
+            buffer.append("\t0\t0\t# ");
+            buffer.append(reaction_counter);
+            buffer.append("\t");
+
+            // lookup raw comment line for this reaction -
+            String reaction_comment = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
+            buffer.append(reaction_comment);
+            buffer.append("\n");
+
+            // update the counter -
+            reaction_counter++;
+        }
+
+        buffer.append("];\n");
+
+        buffer.append("\n");
         buffer.append("# ---------------------------- DO NOT EDIT BELOW THIS LINE -------------------------- #\n");
         buffer.append("data_dictionary = Dict();\n");
-        buffer.append("data_dictionary[\"STOICHIOMETRIC_MATRIX\"] = S;\n");
+        buffer.append("data_dictionary[\"STOICHIOMETRIC_MATRIX\"] = stoichiometric_matrix;\n");
+        buffer.append("data_dictionary[\"CONTROL_PARAMETER_ARRAY\"] = control_parameter_array;\n");
+        buffer.append("data_dictionary[\"BOUNDS_PARAMETER_ARRAY\"] = bounds_parameter_array;\n");
         buffer.append("data_dictionary[\"MIN_FLAG\"] = min_flag;\n");
         buffer.append("data_dictionary[\"SPECIES_MODEL_DICTIONARY\"] = species_model_dictionary;\n");
         buffer.append("data_dictionary[\"FLUX_MODEL_DICTIONARY\"] = flux_model_dictionary;\n");
+        buffer.append("data_dictionary[\"NUMBER_OF_SPECIES\"] = number_of_species;\n");
+        buffer.append("data_dictionary[\"NUMBER_OF_FLUXES\"] = number_of_fluxes;\n");
         buffer.append("# ----------------------------------------------------------------------------------- #\n");
 
         // last line -
@@ -211,41 +290,57 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             String symbol = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
             String balanced = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_BALANCED_FLAG);
 
+            // String -
+            String julia_model_name = symbol+"_model";
+
+
             // write the code -
             buffer.append("# species_symbol: ");
             buffer.append(species_index);
             buffer.append(" ");
             buffer.append(symbol);
             buffer.append(" - \n");
-            buffer.append(symbol);
-            buffer.append("_model = SpeciesModel();\n");
+            buffer.append(julia_model_name);
+            buffer.append(" = SpeciesModel();\n");
 
             // Setup the index -
-            buffer.append(symbol);
-            buffer.append("_model.species_index = ");
+            buffer.append(julia_model_name);
+            buffer.append(".species_index = ");
             buffer.append(species_index++);
             buffer.append(";\n");
 
             // Setup the symbol -
-            buffer.append(symbol);
-            buffer.append("_model.species_symbol = string(\"");
+            buffer.append(julia_model_name);
+            buffer.append(".species_symbol = string(\"");
             buffer.append(symbol);
             buffer.append("\");\n");
 
-            // Setup the type -
-            buffer.append(symbol);
-            buffer.append("_model.species_constraint_type = GLPK.LO;\n");
-            buffer.append(symbol);
-            buffer.append("_model.species_upper_bound = 0.0;\n");
+            if (balanced.equalsIgnoreCase("true")){
+
+                // Setup the type -
+                buffer.append(julia_model_name);
+                buffer.append(".species_constraint_type = GLPK.FX;\n");
+            }
+            else {
+
+                // Setup the type -
+                buffer.append(julia_model_name);
+                buffer.append(".species_constraint_type = GLPK.LO;\n");
+            }
+
+            buffer.append(julia_model_name);
+            buffer.append(".species_lower_bound = 0.0;\n");
+            buffer.append(julia_model_name);
+            buffer.append(".species_upper_bound = 0.0;\n");
 
             // add this model to the array -
             buffer.append("species_model_dictionary[\"");
             buffer.append(symbol);
             buffer.append("\"] = ");
-            buffer.append(symbol);
-            buffer.append("_model;\n");
-            buffer.append(symbol);
-            buffer.append("_model = 0;\n");
+            buffer.append(julia_model_name);
+            buffer.append(";\n");
+            buffer.append(julia_model_name);
+            buffer.append(" = 0;\n");
 
             // add a trailing new line -
             buffer.append("\n");
@@ -355,6 +450,14 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("include(\"");
         driver.append(balance_filename);
         driver.append("\")\n");
+
+        // import the control file -
+        String control_filename = property_tree.lookupKwateeControlFunctionName() + ".jl";
+        driver.append("include(\"");
+        driver.append(control_filename);
+        driver.append("\")\n");
+
+        // import GLPK -
         driver.append("using GLPK\n");
         driver.append("\n");
 
@@ -366,7 +469,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         String function_name = property_tree.lookupKwateeDriverFunctionName();
         driver.append("function ");
         driver.append(function_name);
-        driver.append("(species_abundance_array,specific_growth_rate,step_size,data_dictionary)\n");
+        driver.append("(time, species_abundance_array, specific_growth_rate, step_size, data_dictionary; steady_state_flag=true)\n");
 
         driver.append("# ----------------------------------------------------------------------------------- #\n");
         driver.append("# ");
@@ -401,8 +504,14 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
         // Get the stoichiometric array -
         driver.append("# Get the stoichiometric_matrix from data_dictionary - \n");
+        driver.append("bounds_parameter_array = data_dictionary[\"BOUNDS_PARAMETER_ARRAY\"];\n");
         driver.append("stoichiometric_matrix = data_dictionary[\"STOICHIOMETRIC_MATRIX\"];\n");
         driver.append("(number_of_species,number_of_fluxes) = size(stoichiometric_matrix);\n");
+
+        // Setup the control function call
+        driver.append("\n");
+        driver.append("# Call the control function - \n");
+        driver.append("control_array = Control(time, species_abundance_array, data_dictionary);\n");
 
         // setup the GLPK problem -
         driver.append("\n");
@@ -440,6 +549,30 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tflux_constraint_type = flux_model.flux_constraint_type;\n");
         driver.append("\tobj_coeff = flux_model.flux_obj_coeff;\n");
         driver.append("\n");
+        driver.append("\t# Do we need to modify the bounds for this flux?\n");
+        driver.append("\tlower_bound_update = bounds_parameter_array[flux_index,1];\n");
+        driver.append("\tupper_bound_update = bounds_parameter_array[flux_index,2];\n");
+        driver.append("\tif (lower_bound_update == 0 && upper_bound_update == 0)\n");
+        driver.append("\n");
+        driver.append("\t\t# Use the default bounds -\n");
+        driver.append("\t\tlower_bound = lower_bound;\n");
+        driver.append("\t\tupper_bound = upper_bound;\n");
+        driver.append("\telseif (lower_bound_update == 1 && upper_bound_update == 0)\n");
+        driver.append("\n");
+        driver.append("\t\t# Replace the lower bound wih: upper_bound*control_variable -\n");
+        driver.append("\t\tlower_bound = upper_bound*control_array[flux_index];\n");
+        driver.append("\telseif (lower_bound_update == 0 && upper_bound_update == 1)\n");
+        driver.append("\n");
+        driver.append("\t\t# Replace the upper bound wih: upper_bound*control_variable -\n");
+        driver.append("\t\tupper_bound = upper_bound*control_array[flux_index];\n");
+        driver.append("\telseif (lower_bound_update == 1 && upper_bound_update == 1)\n");
+        driver.append("\n");
+        driver.append("\t\t# Replace the upper and lower bounds with a range: upper_bound*control_variable -\n");
+        driver.append("\t\tlower_bound = 0.8*upper_bound*control_array[flux_index];\n");
+        driver.append("\t\tupper_bound = upper_bound*control_array[flux_index];\n");
+        driver.append("\tend\n");
+
+        driver.append("\n");
         driver.append("\t# Set the bounds in GLPK - \n");
         driver.append("\tGLPK.set_col_name(lp_problem, flux_index, flux_symbol);\n");
         driver.append("\tGLPK.set_col_bnds(lp_problem, flux_index, flux_constraint_type, lower_bound, upper_bound);\n");
@@ -458,7 +591,16 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tspecies_index = species_model.species_index;\n");
         driver.append("\tspecies_symbol = species_model.species_symbol;\n");
         driver.append("\tspecies_constraint_type = species_model.species_constraint_type;\n");
-        driver.append("\tspecies_lower_bound = -1*(1-specific_growth_rate)*species_abundance_array[species_index];\n");
+
+        // steady state flag?
+        driver.append("\n");
+        driver.append("\t# Are we solving for a steady-state flux distribution?\n");
+        driver.append("\tif steady_state_flag == true \n");
+        driver.append("\t\tspecies_lower_bound = species_model.species_lower_bound;\n");
+        driver.append("\telse\n");
+        driver.append("\t\tspecies_lower_bound = -1*(1-specific_growth_rate)*species_abundance_array[species_index];\n");
+        driver.append("\t\tspecies_constraint_type = GLPK.LO;\n");
+        driver.append("\tend\n");
         driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
         driver.append("\n");
         driver.append("\t# Set the species bounds in GLPK - \n");
@@ -525,5 +667,171 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
         // return -
         return driver.toString();
+    }
+
+    public String buildControlFunctionBuffer(VLCGNFBAModelTreeWrapper model_tree,VLCGTransformationPropertyTree property_tree) throws Exception {
+
+        // Method variables -
+        StringBuffer buffer = new StringBuffer();
+
+        // Get the control function name -
+        String control_function_name = property_tree.lookupKwateeControlFunctionName();
+
+        // Copyright notice -
+        String copyright = copyrightFactory.getJuliaCopyrightHeader();
+        buffer.append(copyright);
+
+        // Fill in the buffer -
+        buffer.append("function ");
+        buffer.append(control_function_name);
+        buffer.append("(t,x,data_dictionary)\n");
+        buffer.append("# ---------------------------------------------------------------------- #\n");
+        buffer.append("# ");
+        buffer.append(control_function_name);
+        buffer.append(".jl was generated using the Kwatee code generation system.\n");
+        buffer.append("# Username: ");
+        buffer.append(property_tree.lookupKwateeModelUsername());
+        buffer.append("\n");
+        buffer.append("# Type: ");
+        buffer.append(property_tree.lookupKwateeModelType());
+        buffer.append("\n");
+        buffer.append("# Version: ");
+        buffer.append(property_tree.lookupKwateeModelVersion());
+        buffer.append("\n");
+        buffer.append("# Generation timestamp: ");
+        buffer.append(date_formatter.format(today));
+        buffer.append("\n");
+        buffer.append("# \n");
+        buffer.append("# Arguments: \n");
+        buffer.append("# t  - current time \n");
+        buffer.append("# x  - state vector \n");
+        buffer.append("# data_dictionary  - Data dictionary instance (holds model parameters) \n");
+        buffer.append("# ---------------------------------------------------------------------- #\n");
+        buffer.append("\n");
+        buffer.append("# Set a default value for the allosteric control variables - \n");
+        buffer.append("EPSILON = 1.0e-3;\n");
+        buffer.append("number_of_fluxes = data_dictionary[\"NUMBER_OF_FLUXES\"];\n");
+        buffer.append("control_vector = ones(number_of_fluxes);\n");
+        buffer.append("control_parameter_array = data_dictionary[\"CONTROL_PARAMETER_ARRAY\"];\n");
+        buffer.append("\n");
+
+        buffer.append("# Alias the species vector - \n");
+        ArrayList<VLCGNFBASpeciesModel> species_model_list = model_tree.getListOfSpeciesModelsFromModelTree();
+        int species_index = 1;
+        for (VLCGNFBASpeciesModel species_model : species_model_list) {
+
+            // Get the species symbol -
+            String species_symbol = (String) species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+
+            // write the symbol =
+            buffer.append(species_symbol);
+            buffer.append(" = x[");
+            buffer.append(species_index++);
+            buffer.append("];\n");
+        }
+
+        // Build the list of control elements -
+        buffer.append("\n");
+        buffer.append("# Build the control vector - \n");
+        ArrayList<String> reaction_name_list = model_tree.getListOfReactionNamesFromModelTree();
+        int reaction_index = 1;
+        int control_index = 1;
+        for (String reaction_name : reaction_name_list) {
+
+            // is this reaction regulated?
+            if (model_tree.isThisReactionRegulated(reaction_name)) {
+
+                // ok, we have a regulation term for this reaction
+                buffer.append("# ----------------------------------------------------------------------------------- #\n");
+                buffer.append("transfer_function_vector = Float64[];\n");
+                buffer.append("\n");
+
+
+                // Get the transfer functions for this reaction -
+                ArrayList<VLCGSimpleControlLogicModel> control_model_list = model_tree.getControlModelListFromModelTreeForReactionWithName(reaction_name);
+                for (VLCGSimpleControlLogicModel control_model : control_model_list) {
+
+                    // Get the comment -
+                    String comment = (String) control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_COMMENT);
+                    buffer.append("# ");
+                    buffer.append(comment);
+                    buffer.append("\n");
+
+
+                    // Get the data from the model -
+                    String actor = (String) control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_ACTOR);
+                    String type = (String) control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_TYPE);
+
+                    // Check the type -
+                    if (type.equalsIgnoreCase("repression") || type.equalsIgnoreCase("inhibition")) {
+
+                        // write -
+
+                        // check do we have a zero inhibitor?
+                        buffer.append("if (");
+                        buffer.append(actor);
+                        buffer.append("<EPSILON);\n");
+                        buffer.append("\tpush!(transfer_function_vector,1.0);\n");
+                        buffer.append("else\n");
+                        buffer.append("\tpush!(transfer_function_vector,1.0 - (control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*(");
+                        buffer.append(actor);
+                        buffer.append(")^control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2])/(1+");
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*(");
+                        buffer.append(actor);
+                        buffer.append(")^control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2]));\n");
+                        buffer.append("end\n");
+                        buffer.append("\n");
+                    } else {
+
+                        // write -
+                        buffer.append("push!(transfer_function_vector,(control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*(");
+                        buffer.append(actor);
+                        buffer.append(")^control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2])/(1+");
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*(");
+                        buffer.append(actor);
+                        buffer.append(")^control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2]));\n");
+                    }
+
+                    // update control_index -
+                    control_index++;
+                }
+
+                // integrate the transfer functions -
+                buffer.append("control_vector[");
+                buffer.append(reaction_index);
+                buffer.append("] = mean(transfer_function_vector);\n");
+                buffer.append("transfer_function_vector = 0;\n");
+                buffer.append("# ----------------------------------------------------------------------------------- #\n");
+                buffer.append("\n");
+            }
+
+            // update the counter -
+            reaction_index++;
+        }
+
+        // last line -
+        buffer.append("\n");
+        buffer.append("# Return the control vector - \n");
+        buffer.append("return control_vector;\n");
+        buffer.append("end\n");
+
+        // return the buffer -
+        return buffer.toString();
     }
 }
