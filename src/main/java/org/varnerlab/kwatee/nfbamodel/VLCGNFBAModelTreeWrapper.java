@@ -207,6 +207,24 @@ public class VLCGNFBAModelTreeWrapper {
             tmp_array[col_index] = "0.0";
         }
 
+        if (species_symbol.contains("gene_")){
+            int col_index = 0;
+            for (String element_value : tmp_array){
+                row_buffer.append(element_value);
+
+                if (col_index<number_of_reactions - 1){
+                    row_buffer.append(" ");
+                }
+
+                col_index++;
+            }
+
+            // add a new-line -
+            row_buffer.append("\n");
+
+            return row_buffer.toString();
+        }
+
         // Lookup reaction names that this species is a *reactant* in -
         String reaction_name_xpath = ".//listOfReactions/reaction/listOfReactants/speciesReference[@species=\""+species_symbol+"\"]/../../@name";
         NodeList reaction_name_list = _lookupPropertyCollectionFromTreeUsingXPath(reaction_name_xpath);
