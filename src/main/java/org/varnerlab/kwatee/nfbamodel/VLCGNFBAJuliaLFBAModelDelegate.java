@@ -175,6 +175,31 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("lower_bound = flux_model.flux_lower_bound;\n");
         buffer.append("upper_bound = flux_model.flux_upper_bound;\n");
         buffer.append("constraint_type = flux_model.flux_constraint_type\n");
+        buffer.append("\n");
+        buffer.append("# Default bounds update rule is a power-law (user can override if they wish) - \n");
+        buffer.append("gamma_array = flux_model.flux_gamma_array;\n");
+        buffer.append("idx = find(x->(x>0),gamma_array);\n");
+        buffer.append("\n");
+        buffer.append("index_vector = collect(1:length(idx))\n");
+        buffer.append("tmp_array = ones(Float64,length(idx))\n");
+        buffer.append("for index in index_vector\n");
+        buffer.append("\tlocal_index = idx[index];\n");
+        buffer.append("\ttmp_array[index] = species_abundance_array[local_index]^gamma_array[local_index];\n");
+        buffer.append("end\n");
+
+        // Logic block -
+        buffer.append("\n");
+        buffer.append("# Bound update logic goes here .... \n");
+        buffer.append("# ... \n");
+
+        // global checks -
+        buffer.append("\n");
+        buffer.append("# Check on computed bounds - \n");
+        buffer.append("if (lower_bound == upper_bound)\n");
+        buffer.append("\tconstraint_type = GLPK.FX\n");
+        buffer.append("end\n");
+
+        buffer.append("\n");
         buffer.append("return (lower_bound, upper_bound, constraint_type);\n");
         buffer.append("end\n");
 
@@ -314,34 +339,39 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             }
         }
 
-//        // ok, we need to setup the bounds parameter array -
-//        buffer.append("\n");
-//        buffer.append("# Formulate bounds parameter array - \n");
-//        buffer.append("bounds_parameter_array = [\n");
-//        int reaction_counter = 1;
-//        for (String reaction_name : reaction_name_list){
-//
-//            buffer.append("\t0\t0\t# ");
-//            buffer.append(reaction_counter);
-//            buffer.append("\t");
-//
-//            // lookup raw comment line for this reaction -
-//            String reaction_comment = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
-//            buffer.append(reaction_comment);
-//            buffer.append("\n");
-//
-//            // update the counter -
-//            reaction_counter++;
-//        }
-//
-//        buffer.append("];\n");
+        // ok, we need to setup the bounds parameter array -
+        buffer.append("\n");
+        buffer.append("# Formulate the dilution selection array - \n");
+        buffer.append("dilution_selection_array = [\n");
+        ArrayList<VLCGNFBASpeciesModel> species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
+        int species_index = 1;
+        for (VLCGNFBASpeciesModel species_model : species_model_array) {
+
+            // Get data -
+            String symbol = (String) species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+
+            // write the line -
+            if (symbol.contains("gene_") == true) {
+
+                buffer.append("\t0.0\t;\t");
+            }
+            else {
+
+                buffer.append("\t1.0\t;\t");
+            }
+
+            buffer.append("#\t");
+            buffer.append(symbol);
+            buffer.append("\n");
+        }
+        buffer.append("];\n");
 
         buffer.append("\n");
         buffer.append("# ---------------------------- DO NOT EDIT BELOW THIS LINE -------------------------- #\n");
         buffer.append("data_dictionary = Dict();\n");
         buffer.append("data_dictionary[\"STOICHIOMETRIC_MATRIX\"] = stoichiometric_matrix;\n");
         buffer.append("data_dictionary[\"CONTROL_PARAMETER_ARRAY\"] = control_parameter_array;\n");
-        //buffer.append("data_dictionary[\"BOUNDS_PARAMETER_ARRAY\"] = bounds_parameter_array;\n");
+        buffer.append("data_dictionary[\"DILUTION_SELECTION_ARRAY\"] = dilution_selection_array;\n");
         buffer.append("data_dictionary[\"MIN_FLAG\"] = min_flag;\n");
         buffer.append("data_dictionary[\"SPECIES_MODEL_DICTIONARY\"] = species_model_dictionary;\n");
         buffer.append("data_dictionary[\"FLUX_MODEL_DICTIONARY\"] = flux_model_dictionary;\n");
@@ -373,8 +403,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\n");
 
         // ok - lets build the species models -
-        ArrayList<VLCGNFBASpeciesModel> species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
-        int species_index = 1;
+        species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
+        species_index = 1;
         for (VLCGNFBASpeciesModel species_model : species_model_array){
 
             // Get data -
@@ -608,6 +638,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
         // Get the stoichiometric array -
         driver.append("# Get the stoichiometric_matrix from data_dictionary - \n");
+        driver.append("dsa = data_dictionary[\"DILUTION_SELECTION_ARRAY\"];\n");
         driver.append("stoichiometric_matrix = data_dictionary[\"STOICHIOMETRIC_MATRIX\"];\n");
         driver.append("(number_of_species,number_of_fluxes) = size(stoichiometric_matrix);\n");
 
@@ -681,7 +712,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tspecies_lower_bound = species_model.species_lower_bound;\n");
         driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
         driver.append("\tif steady_state_flag == false \n");
-        driver.append("\t\tspecies_lower_bound = -1*(1-specific_growth_rate)*species_abundance_array[species_index];\n");
+        driver.append("\t\tspecies_lower_bound = -1*(1 - dsa[species_index]*specific_growth_rate)*species_abundance_array[species_index];\n");
         driver.append("\t\tspecies_constraint_type = GLPK.LO;\n");
         driver.append("\tend\n");
         driver.append("\n");

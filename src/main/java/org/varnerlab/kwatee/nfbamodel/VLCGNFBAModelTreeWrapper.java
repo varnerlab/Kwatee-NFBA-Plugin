@@ -150,6 +150,22 @@ public class VLCGNFBAModelTreeWrapper {
 
         return control_vector;
     }
+    public boolean isThisATranslationReaction(String reaction_name) throws Exception {
+
+        // method variables -
+        boolean return_flag = false;
+
+        // ok, check - do we have a control statement with this reaction name as the target?
+        String xpath_string = ".//reaction[@name=\""+reaction_name+"\"]/@type";
+        String reaction_type = _lookupPropertyValueFromTreeUsingXPath(xpath_string);
+
+        if (reaction_type.equalsIgnoreCase("TRANSLATION")){
+            return_flag = true;
+        }
+
+        // return -
+        return return_flag;
+    }
 
     public boolean isThisReactionRegulated(String reaction_name) throws Exception {
 
@@ -290,8 +306,6 @@ public class VLCGNFBAModelTreeWrapper {
         // how many *total* reactions do we have?
         int number_of_reactions = this.calculateTheTotalNumberOfReactionTerms();
 
-
-
         // Build a tmp array of zeros -
         String[] tmp_array = new String[number_of_reactions];
         for (int col_index = 0;col_index<number_of_reactions;col_index++){
@@ -325,16 +339,20 @@ public class VLCGNFBAModelTreeWrapper {
             // Get name value -
             String local_reaction_name = reaction_name_list.item(local_reaction_index).getNodeValue();
 
-            // Get the reaction index -
-            String xpath_reaction_index = ".//listOfReactions/reaction[@name=\""+local_reaction_name+"\"]/@index";
-            String reaction_index = _lookupPropertyValueFromTreeUsingXPath(xpath_reaction_index);
+            // is this a translation reaction?
+            if (isThisATranslationReaction(local_reaction_name) == false) {
 
-            // Get stoichiometric coefficient -
-            String xpath_stochiometric_coefficient = ".//listOfReactions/reaction[@name=\""+local_reaction_name+"\"]/listOfReactants/speciesReference[@species=\""+species_symbol+"\"]/@stoichiometry";
-            String stochiometric_coefficient = _lookupPropertyValueFromTreeUsingXPath(xpath_stochiometric_coefficient);
+                // Get the reaction index -
+                String xpath_reaction_index = ".//listOfReactions/reaction[@name=\"" + local_reaction_name + "\"]/@index";
+                String reaction_index = _lookupPropertyValueFromTreeUsingXPath(xpath_reaction_index);
 
-            // update the tmp_array -
-            tmp_array[Integer.parseInt(reaction_index) - 1] = "-"+stochiometric_coefficient;
+                // Get stoichiometric coefficient -
+                String xpath_stochiometric_coefficient = ".//listOfReactions/reaction[@name=\"" + local_reaction_name + "\"]/listOfReactants/speciesReference[@species=\"" + species_symbol + "\"]/@stoichiometry";
+                String stochiometric_coefficient = _lookupPropertyValueFromTreeUsingXPath(xpath_stochiometric_coefficient);
+
+                // update the tmp_array -
+                tmp_array[Integer.parseInt(reaction_index) - 1] = "-" + stochiometric_coefficient;
+            }
         }
 
         // Lookup reactions names that this species is a *product* in -
