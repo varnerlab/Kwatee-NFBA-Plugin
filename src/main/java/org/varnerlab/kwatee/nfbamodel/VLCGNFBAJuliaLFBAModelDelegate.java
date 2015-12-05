@@ -65,10 +65,77 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
     }
 
 
+    public String buildBoundsFunctionBuffer(VLCGNFBAModelTreeWrapper model_tree, VLCGTransformationPropertyTree property_tree) throws Exception {
+
+        // Method variables -
+        StringBuilder buffer = new StringBuilder();
+
+        // We are using GLPK constants -
+        buffer.append("using GLPK\n");
+
+        // Copyright notice -
+        String copyright = copyrightFactory.getJuliaCopyrightHeader();
+        buffer.append(copyright);
+
+        // Get the function name -
+        buffer.append("\n");
+        String function_name = property_tree.lookupKwateeBoundsFunctionName();
+        buffer.append("function ");
+        buffer.append(function_name);
+        buffer.append("(flux_name::AbstractString, flux_model::FluxModel, species_abundance_array, control_variable::Float64)\n");
+
+        buffer.append("# ----------------------------------------------------------------------------------- #\n");
+        buffer.append("# ");
+        buffer.append(function_name);
+        buffer.append(".jl was generated using the Kwatee code generation system.\n");
+        buffer.append("# ");
+        buffer.append(function_name);
+        buffer.append(": Updates the flux bounds for flux with key \n");
+        buffer.append("# Username: ");
+        buffer.append(property_tree.lookupKwateeModelUsername());
+        buffer.append("\n");
+        buffer.append("# Type: ");
+        buffer.append(property_tree.lookupKwateeModelType());
+        buffer.append("\n");
+        buffer.append("# Version: ");
+        buffer.append(property_tree.lookupKwateeModelVersion());
+        buffer.append("\n");
+        buffer.append("# Generation timestamp: ");
+        buffer.append(date_formatter.format(today));
+        buffer.append("\n");
+        buffer.append("# \n");
+        buffer.append("# Input arguments: \n");
+        buffer.append("# flux_name  - name of the flux whose bounds we are checking \n");
+        buffer.append("# flux_model - custom flux model \n");
+        buffer.append("# control_variable - value of the control variable for this flux \n");
+        buffer.append("# species_abundance_array - value of the system state at current time step \n");
+        buffer.append("# \n");
+        buffer.append("# Return arguments: \n");
+        buffer.append("# lower_bound - value of the new lower bound \n");
+        buffer.append("# upper_bound - value of the new upper bound \n");
+        buffer.append("# constraint_type - value of the GLPK constraint type \n");
+        buffer.append("# ----------------------------------------------------------------------------------- #\n");
+        buffer.append("\n");
+        buffer.append("# Default is to pass the bounds and constraint type back - \n");
+        buffer.append("lower_bound = flux_model.flux_lower_bound;\n");
+        buffer.append("upper_bound = flux_model.flux_upper_bound;\n");
+        buffer.append("constraint_type = flux_model.flux_constraint_type\n");
+        buffer.append("return (lower_bound, upper_bound, constraint_type);\n");
+        buffer.append("end\n");
+
+        return buffer.toString();
+    }
+
     public String buildDataDictionaryFunctionBuffer(VLCGNFBAModelTreeWrapper model_tree, VLCGTransformationPropertyTree property_tree) throws Exception {
 
         // Method variables -
         StringBuilder buffer = new StringBuilder();
+
+        // We need to get the imports -
+        String bounds_filename = property_tree.lookupKwateeBoundsFunctionName() + ".jl";
+        buffer.append("include(\"");
+        buffer.append(bounds_filename);
+        buffer.append("\")\n");
 
         // We are using GLPK constants -
         buffer.append("using GLPK\n");
@@ -105,6 +172,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\tflux_lower_bound::Float64\n");
         buffer.append("\tflux_upper_bound::Float64\n");
         buffer.append("\tflux_constraint_type::Int32\n");
+        buffer.append("\tflux_gamma_array::Array{Float64,1}\n");
+        buffer.append("\tflux_bounds_model::Function\n");
         buffer.append("\tflux_obj_coeff::Float64\n");
         buffer.append("\n");
         buffer.append("\t# Constructor - \n");
@@ -223,34 +292,34 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             }
         }
 
-        // ok, we need to setup the bounds parameter array -
-        buffer.append("\n");
-        buffer.append("# Formulate bounds parameter array - \n");
-        buffer.append("bounds_parameter_array = [\n");
-        int reaction_counter = 1;
-        for (String reaction_name : reaction_name_list){
-
-            buffer.append("\t0\t0\t# ");
-            buffer.append(reaction_counter);
-            buffer.append("\t");
-
-            // lookup raw comment line for this reaction -
-            String reaction_comment = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
-            buffer.append(reaction_comment);
-            buffer.append("\n");
-
-            // update the counter -
-            reaction_counter++;
-        }
-
-        buffer.append("];\n");
+//        // ok, we need to setup the bounds parameter array -
+//        buffer.append("\n");
+//        buffer.append("# Formulate bounds parameter array - \n");
+//        buffer.append("bounds_parameter_array = [\n");
+//        int reaction_counter = 1;
+//        for (String reaction_name : reaction_name_list){
+//
+//            buffer.append("\t0\t0\t# ");
+//            buffer.append(reaction_counter);
+//            buffer.append("\t");
+//
+//            // lookup raw comment line for this reaction -
+//            String reaction_comment = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
+//            buffer.append(reaction_comment);
+//            buffer.append("\n");
+//
+//            // update the counter -
+//            reaction_counter++;
+//        }
+//
+//        buffer.append("];\n");
 
         buffer.append("\n");
         buffer.append("# ---------------------------- DO NOT EDIT BELOW THIS LINE -------------------------- #\n");
         buffer.append("data_dictionary = Dict();\n");
         buffer.append("data_dictionary[\"STOICHIOMETRIC_MATRIX\"] = stoichiometric_matrix;\n");
         buffer.append("data_dictionary[\"CONTROL_PARAMETER_ARRAY\"] = control_parameter_array;\n");
-        buffer.append("data_dictionary[\"BOUNDS_PARAMETER_ARRAY\"] = bounds_parameter_array;\n");
+        //buffer.append("data_dictionary[\"BOUNDS_PARAMETER_ARRAY\"] = bounds_parameter_array;\n");
         buffer.append("data_dictionary[\"MIN_FLAG\"] = min_flag;\n");
         buffer.append("data_dictionary[\"SPECIES_MODEL_DICTIONARY\"] = species_model_dictionary;\n");
         buffer.append("data_dictionary[\"FLUX_MODEL_DICTIONARY\"] = flux_model_dictionary;\n");
@@ -413,7 +482,20 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
             // upper bound -
             buffer.append(julia_model_name);
-            buffer.append(".flux_upper_bound = 1000.0;\n");
+            buffer.append(".flux_upper_bound = 1.0;\n");
+
+            // callback -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_bounds_model = Bounds;\n");
+
+            // gamma array -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_gamma_array = vec([");
+
+            // formulate the gamma array for this flux -
+            String gamma_array = model_tree.getGammaArrayForReactionWithName(flux_symbol);
+            buffer.append(gamma_array);
+            buffer.append("]);\n");
 
             // object coeff -
             buffer.append(julia_model_name);
@@ -504,7 +586,6 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
         // Get the stoichiometric array -
         driver.append("# Get the stoichiometric_matrix from data_dictionary - \n");
-        driver.append("bounds_parameter_array = data_dictionary[\"BOUNDS_PARAMETER_ARRAY\"];\n");
         driver.append("stoichiometric_matrix = data_dictionary[\"STOICHIOMETRIC_MATRIX\"];\n");
         driver.append("(number_of_species,number_of_fluxes) = size(stoichiometric_matrix);\n");
 
@@ -543,39 +624,19 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\n");
         driver.append("\t# Get the default flux bounds and name - \n");
         driver.append("\tflux_index = flux_model.flux_index;\n");
-        driver.append("\tlower_bound = flux_model.flux_lower_bound;\n");
-        driver.append("\tupper_bound = flux_model.flux_upper_bound;\n");
         driver.append("\tflux_symbol = flux_model.flux_symbol;\n");
-        driver.append("\tflux_constraint_type = flux_model.flux_constraint_type;\n");
         driver.append("\tobj_coeff = flux_model.flux_obj_coeff;\n");
+
+        // Update the bounds -
         driver.append("\n");
-        driver.append("\t# Do we need to modify the bounds for this flux?\n");
-        driver.append("\tlower_bound_update = bounds_parameter_array[flux_index,1];\n");
-        driver.append("\tupper_bound_update = bounds_parameter_array[flux_index,2];\n");
-        driver.append("\tif (lower_bound_update == 0 && upper_bound_update == 0)\n");
-        driver.append("\n");
-        driver.append("\t\t# Use the default bounds -\n");
-        driver.append("\t\tlower_bound = lower_bound;\n");
-        driver.append("\t\tupper_bound = upper_bound;\n");
-        driver.append("\telseif (lower_bound_update == 1 && upper_bound_update == 0)\n");
-        driver.append("\n");
-        driver.append("\t\t# Replace the lower bound wih: upper_bound*control_variable -\n");
-        driver.append("\t\tlower_bound = upper_bound*control_array[flux_index];\n");
-        driver.append("\telseif (lower_bound_update == 0 && upper_bound_update == 1)\n");
-        driver.append("\n");
-        driver.append("\t\t# Replace the upper bound wih: upper_bound*control_variable -\n");
-        driver.append("\t\tupper_bound = upper_bound*control_array[flux_index];\n");
-        driver.append("\telseif (lower_bound_update == 1 && upper_bound_update == 1)\n");
-        driver.append("\n");
-        driver.append("\t\t# Replace the upper and lower bounds with a range: upper_bound*control_variable -\n");
-        driver.append("\t\tlower_bound = 0.8*upper_bound*control_array[flux_index];\n");
-        driver.append("\t\tupper_bound = upper_bound*control_array[flux_index];\n");
-        driver.append("\tend\n");
+        driver.append("\t# Update the bounds for this flux - \n");
+        driver.append("\tbounds_function = flux_model.flux_bounds_model;\n");
+        driver.append("\t(flux_lower_bound, flux_upper_bound, flux_constraint_type) = bounds_function(key, flux_model, species_abundance_array, control_array[flux_index]);\n");
 
         driver.append("\n");
         driver.append("\t# Set the bounds in GLPK - \n");
         driver.append("\tGLPK.set_col_name(lp_problem, flux_index, flux_symbol);\n");
-        driver.append("\tGLPK.set_col_bnds(lp_problem, flux_index, flux_constraint_type, lower_bound, upper_bound);\n");
+        driver.append("\tGLPK.set_col_bnds(lp_problem, flux_index, flux_constraint_type, flux_lower_bound, flux_upper_bound);\n");
         driver.append("\n");
         driver.append("\t# Set the objective function value in GLPK - \n");
         driver.append("\tGLPK.set_obj_coef(lp_problem, flux_index, obj_coeff);\n");
@@ -595,13 +656,12 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         // steady state flag?
         driver.append("\n");
         driver.append("\t# Are we solving for a steady-state flux distribution?\n");
-        driver.append("\tif steady_state_flag == true \n");
-        driver.append("\t\tspecies_lower_bound = species_model.species_lower_bound;\n");
-        driver.append("\telse\n");
+        driver.append("\tspecies_lower_bound = species_model.species_lower_bound;\n");
+        driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
+        driver.append("\tif steady_state_flag == false \n");
         driver.append("\t\tspecies_lower_bound = -1*(1-specific_growth_rate)*species_abundance_array[species_index];\n");
         driver.append("\t\tspecies_constraint_type = GLPK.LO;\n");
         driver.append("\tend\n");
-        driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
         driver.append("\n");
         driver.append("\t# Set the species bounds in GLPK - \n");
         driver.append("\tGLPK.set_row_name(lp_problem, species_index, species_symbol);\n");
@@ -664,6 +724,20 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("# Formulate the return tuple -\n");
         driver.append("return (objective_value, calculated_flux_array, uptake_array, exit_flag);\n");
         driver.append("end\n");
+
+//        // bounds model -
+//        driver.append("\n");
+//        driver.append("function evalPowerLawBoundsModel(x,gamma_array)\n");
+//        driver.append("\n");
+//        driver.append("# find non-zero gamma - \n");
+//        driver.append("\tidx_array = collect(1:length(x));\n");
+//        driver.append("\ttmp_vector = ones(Float64,length(x))\n");
+//        driver.append("\tfor index in idx_array\n");
+//        driver.append("\t\ttmp_vector[index] = pow(x[index],gamma_array[index]);\n");
+//        driver.append("\tend\n");
+//        driver.append("\n");
+//        driver.append("return prod(tmp_vector);\n");
+//        driver.append("end\n");
 
         // return -
         return driver.toString();

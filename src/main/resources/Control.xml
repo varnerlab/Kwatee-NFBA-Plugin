@@ -6,6 +6,8 @@
         <file logic_method="buildDataDictionaryFunctionBuffer" path_method="lookupKwateeDataDictionaryFilePath"/>
         <file logic_method="buildStoichiometricMatrixBuffer" path_method="lookupKwateeStoichiometricMatrixFilePath"/>
         <file logic_method="buildControlFunctionBuffer" path_method="lookupKwateeControlFunctionFilePath"/>
+        <file logic_method="buildBoundsFunctionBuffer" path_method="lookupKwateeBoundsFunctionFilePath"/>
+        <file logic_method="buildTypesLibraryBuffer" path_method="lookupKwateeTypesLibraryFilePath"/>
     </Generation>
 
 

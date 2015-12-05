@@ -192,6 +192,95 @@ public class VLCGNFBAModelTreeWrapper {
         return name_vector;
     }
 
+    // what index is the species with symbol?
+    public int lookupIndexForSpeciesWithSymbol(String species_symbol) throws Exception {
+
+        // method variables -
+        int species_index = -1;
+
+        // get a list of species symbols -
+        ArrayList<VLCGNFBASpeciesModel> species_model_list = this.getListOfSpeciesModelsFromModelTree();
+        ArrayList<String> symbol_array = new ArrayList<String>();
+        for (VLCGNFBASpeciesModel species_model : species_model_list){
+
+            // Get the symbol -
+            String local_symbol = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+            symbol_array.add(local_symbol);
+        }
+
+        // lookup -
+        species_index = symbol_array.indexOf(species_symbol);
+
+        // return -
+        return species_index;
+    }
+
+    // Get the array of reaction orders for this reaction -
+    public String getGammaArrayForReactionWithName(String reaction_name) throws Exception {
+
+        // method variables -
+        StringBuilder array_buffer = new StringBuilder();
+
+        // how many species do we have?
+        int number_of_species = this.calculateTheTotalNumberOfModelSpecies();
+
+        System.out.println("How many species - "+number_of_species);
+
+        // Build a tmp array of zeros -
+        String[] tmp_array = new String[number_of_species];
+        for (int col_index = 0;col_index<number_of_species;col_index++){
+            tmp_array[col_index] = "0.0";
+        }
+
+        // Get the reactant symbols for this reaction -
+        String xpath_reactants = ".//reaction[@name=\""+reaction_name+"\"]/listOfReactants/speciesReference/@species";
+        NodeList reactant_node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_reactants);
+        int number_of_reactants = reactant_node_list.getLength();
+        for (int reactant_index = 0;reactant_index<number_of_reactants;reactant_index++){
+
+            // get reactant node value -
+            String reactant_symbol = reactant_node_list.item(reactant_index).getNodeValue();
+
+            // ok, what index is this symbol?
+            int species_index = this.lookupIndexForSpeciesWithSymbol(reactant_symbol);
+            if (species_index != -1){
+
+                tmp_array[species_index] = "1.0";
+            }
+        }
+
+        // The gamma array will also depend the enzyme level -
+        String xpath_enzyme = ".//reaction[@name=\""+reaction_name+"\"]/@enzyme_symbol";
+        String enzyme_symbol = _lookupPropertyValueFromTreeUsingXPath(xpath_enzyme);
+        if (enzyme_symbol.equalsIgnoreCase("[]") == false){
+
+            // ok, what index is this symbol?
+            int species_index = this.lookupIndexForSpeciesWithSymbol(enzyme_symbol);
+            if (species_index != -1){
+
+                tmp_array[species_index] = "1.0";
+            }
+        }
+
+        // populate the array_buffer -
+        int col_index = 0;
+        for (String element_value : tmp_array){
+
+            array_buffer.append(element_value);
+
+            if (col_index<number_of_species - 1){
+                array_buffer.append(" ");
+            }
+
+            col_index++;
+        }
+
+        System.out.println("array buffer - "+array_buffer.toString());
+
+        // return -
+        return array_buffer.toString();
+    }
+
     // get the dimensions of the system -
     public String getStoichiometricCoefficientsForSpeciesInModel(String species_symbol) throws Exception {
 
@@ -200,6 +289,8 @@ public class VLCGNFBAModelTreeWrapper {
 
         // how many *total* reactions do we have?
         int number_of_reactions = this.calculateTheTotalNumberOfReactionTerms();
+
+
 
         // Build a tmp array of zeros -
         String[] tmp_array = new String[number_of_reactions];
@@ -284,6 +375,14 @@ public class VLCGNFBAModelTreeWrapper {
 
         // return -
         return row_buffer.toString();
+    }
+
+    // How many species do we have?
+    public int calculateTheTotalNumberOfModelSpecies() throws Exception {
+
+        // get reaction list-
+        ArrayList<VLCGNFBASpeciesModel> species_model_array = this.getListOfSpeciesModelsFromModelTree();
+        return species_model_array.size();
     }
 
     // how many reactions do we have?
