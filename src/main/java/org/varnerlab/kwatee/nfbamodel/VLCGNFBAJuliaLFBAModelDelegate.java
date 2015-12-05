@@ -64,11 +64,66 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         return buffer.toString();
     }
 
+    public String buildTypesLibraryBuffer(VLCGNFBAModelTreeWrapper model_tree, VLCGTransformationPropertyTree property_tree) throws Exception {
+
+        // Method variables -
+        StringBuilder buffer = new StringBuilder();
+
+        // Copyright notice -
+        String copyright = copyrightFactory.getJuliaCopyrightHeader();
+        buffer.append(copyright);
+
+        // Create types -
+        buffer.append("\n");
+        buffer.append("# Define the custom species model type - \n");
+        buffer.append("type SpeciesModel\n");
+        buffer.append("\n");
+        buffer.append("\t# Model instance variables - \n");
+        buffer.append("\tspecies_index::Int\n");
+        buffer.append("\tspecies_symbol::AbstractString\n");
+        buffer.append("\tspecies_lower_bound::Float64\n");
+        buffer.append("\tspecies_upper_bound::Float64\n");
+        buffer.append("\tspecies_constraint_type::Int32\n");
+        buffer.append("\n");
+        buffer.append("\t# Constructor - \n");
+        buffer.append("\tfunction SpeciesModel()\n");
+        buffer.append("\t\tthis = new();\n");
+        buffer.append("\tend\n");
+        buffer.append("end\n");
+
+        buffer.append("\n");
+        buffer.append("# Define the custom flux model type - \n");
+        buffer.append("type FluxModel\n");
+        buffer.append("\n");
+        buffer.append("\t# Model instance variables - \n");
+        buffer.append("\tflux_index::Int\n");
+        buffer.append("\tflux_symbol::AbstractString\n");
+        buffer.append("\tflux_lower_bound::Float64\n");
+        buffer.append("\tflux_upper_bound::Float64\n");
+        buffer.append("\tflux_constraint_type::Int32\n");
+        buffer.append("\tflux_gamma_array::Array{Float64,1}\n");
+        buffer.append("\tflux_bounds_model::Function\n");
+        buffer.append("\tflux_obj_coeff::Float64\n");
+        buffer.append("\n");
+        buffer.append("\t# Constructor - \n");
+        buffer.append("\tfunction FluxModel()\n");
+        buffer.append("\t\tthis = new();\n");
+        buffer.append("\tend\n");
+        buffer.append("end\n");
+
+        return buffer.toString();
+    }
 
     public String buildBoundsFunctionBuffer(VLCGNFBAModelTreeWrapper model_tree, VLCGTransformationPropertyTree property_tree) throws Exception {
 
         // Method variables -
         StringBuilder buffer = new StringBuilder();
+
+        // We need to get the imports -
+        String typelib_filename = property_tree.lookupKwateeTypesLibraryName() + ".jl";
+        buffer.append("include(\"");
+        buffer.append(typelib_filename);
+        buffer.append("\")\n");
 
         // We are using GLPK constants -
         buffer.append("using GLPK\n");
@@ -131,7 +186,13 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         // Method variables -
         StringBuilder buffer = new StringBuilder();
 
-        // We need to get the imports -
+        // We need to get the typelib import -
+        String typelib_filename = property_tree.lookupKwateeTypesLibraryName() + ".jl";
+        buffer.append("include(\"");
+        buffer.append(typelib_filename);
+        buffer.append("\")\n");
+
+        // We need to get the import -
         String bounds_filename = property_tree.lookupKwateeBoundsFunctionName() + ".jl";
         buffer.append("include(\"");
         buffer.append(bounds_filename);
@@ -143,45 +204,6 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         // Copyright notice -
         String copyright = copyrightFactory.getJuliaCopyrightHeader();
         buffer.append(copyright);
-
-        // Create types -
-        buffer.append("\n");
-        buffer.append("# Define the custom species model type - \n");
-        buffer.append("type SpeciesModel\n");
-        buffer.append("\n");
-        buffer.append("\t# Model instance variables - \n");
-        buffer.append("\tspecies_index::Int\n");
-        buffer.append("\tspecies_symbol::AbstractString\n");
-        buffer.append("\tspecies_lower_bound::Float64\n");
-        buffer.append("\tspecies_upper_bound::Float64\n");
-        buffer.append("\tspecies_constraint_type::Int32\n");
-        buffer.append("\n");
-        buffer.append("\t# Constructor - \n");
-        buffer.append("\tfunction SpeciesModel()\n");
-        buffer.append("\t\tthis = new();\n");
-        buffer.append("\tend\n");
-        buffer.append("end\n");
-
-        buffer.append("\n");
-        buffer.append("# Define the custom flux model type - \n");
-        buffer.append("type FluxModel\n");
-        buffer.append("\n");
-        buffer.append("\t# Model instance variables - \n");
-        buffer.append("\tflux_index::Int\n");
-        buffer.append("\tflux_symbol::AbstractString\n");
-        buffer.append("\tflux_lower_bound::Float64\n");
-        buffer.append("\tflux_upper_bound::Float64\n");
-        buffer.append("\tflux_constraint_type::Int32\n");
-        buffer.append("\tflux_gamma_array::Array{Float64,1}\n");
-        buffer.append("\tflux_bounds_model::Function\n");
-        buffer.append("\tflux_obj_coeff::Float64\n");
-        buffer.append("\n");
-        buffer.append("\t# Constructor - \n");
-        buffer.append("\tfunction FluxModel()\n");
-        buffer.append("\t\tthis = new();\n");
-        buffer.append("\tend\n");
-        buffer.append("end\n");
-
 
         // Get the function name -
         buffer.append("\n");
