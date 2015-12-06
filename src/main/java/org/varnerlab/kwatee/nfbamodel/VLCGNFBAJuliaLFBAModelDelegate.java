@@ -132,6 +132,52 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         String copyright = copyrightFactory.getJuliaCopyrightHeader();
         buffer.append(copyright);
 
+        // Show the species index map -
+        buffer.append("\n");
+        buffer.append("# Species vector - \n");
+        ArrayList<VLCGNFBASpeciesModel> species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
+        int species_index = 1;
+        for (VLCGNFBASpeciesModel species_model : species_model_array) {
+
+            // Get data -
+            String symbol = (String) species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+
+            // write the comment line -
+            buffer.append("# ");
+            buffer.append(species_index);
+            buffer.append("\t");
+            buffer.append(symbol);
+            buffer.append("\n");
+
+            // update -
+            species_index++;
+        }
+
+        // Show the reactions -
+        buffer.append("\n");
+        buffer.append("# Reaction model vector - \n");
+        ArrayList<VLCGNFBABiochemistryReactionModel> reaction_model_array = model_tree.getListOfBiochemicalReactionModelsFromModelTree();
+        int reaction_index = 1;
+        for (VLCGNFBABiochemistryReactionModel reaction_model : reaction_model_array){
+
+            // Get the data -
+            String reaction_key = (String)reaction_model.getModelComponent(VLCGNFBABiochemistryReactionModel.REACTION_NAME);
+            String comment = (String)reaction_model.getModelComponent(VLCGNFBABiochemistryReactionModel.FORMATTED_RAW_RECORD);
+
+            // write the line -
+            buffer.append("# ");
+            buffer.append(reaction_index);
+            buffer.append("\t");
+            buffer.append(reaction_key);
+            buffer.append("\t => \t");
+            buffer.append(comment);
+            buffer.append("\n");
+
+            // update -
+            reaction_index++;
+        }
+
+
         // Get the function name -
         buffer.append("\n");
         String function_name = property_tree.lookupKwateeBoundsFunctionName();
@@ -360,9 +406,15 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
                 buffer.append("\t1.0\t;\t");
             }
 
+
             buffer.append("#\t");
+            buffer.append(species_index);
+            buffer.append("\t");
             buffer.append(symbol);
             buffer.append("\n");
+
+            // update the species index -
+            species_index++;
         }
         buffer.append("];\n");
 
