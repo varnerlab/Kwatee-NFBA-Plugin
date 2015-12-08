@@ -83,6 +83,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\tspecies_symbol::AbstractString\n");
         buffer.append("\tspecies_lower_bound::Float64\n");
         buffer.append("\tspecies_upper_bound::Float64\n");
+        buffer.append("\tis_species_measured::Bool\n");
+        buffer.append("\tspecies_measurement_array::Array{Float64,3}\n");
         buffer.append("\tspecies_constraint_type::Int32\n");
         buffer.append("\n");
         buffer.append("\t# Constructor - \n");
@@ -102,6 +104,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\tflux_upper_bound::Float64\n");
         buffer.append("\tflux_constraint_type::Int32\n");
         buffer.append("\tflux_gamma_array::Array{Float64,1}\n");
+        buffer.append("\tflux_bound_alpha::Float64\n");
         buffer.append("\tflux_bounds_model::Function\n");
         buffer.append("\tflux_obj_coeff::Float64\n");
         buffer.append("\n");
@@ -224,6 +227,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\n");
         buffer.append("# Default bounds update rule is a power-law (user can override if they wish) - \n");
         buffer.append("gamma_array = flux_model.flux_gamma_array;\n");
+        buffer.append("alpha = flux_model.flux_bound_alpha;\n");
         buffer.append("idx = find(x->(x>0),gamma_array);\n");
         buffer.append("\n");
         buffer.append("index_vector = collect(1:length(idx))\n");
@@ -506,6 +510,10 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             buffer.append(julia_model_name);
             buffer.append(".species_upper_bound = 0.0;\n");
 
+            // Add the default measurment fields -
+            buffer.append(julia_model_name);
+            buffer.append(".is_species_measured = false;\n");
+
             // add this model to the array -
             buffer.append("species_model_dictionary[\"");
             buffer.append(symbol);
@@ -601,6 +609,10 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             buffer.append(gamma_array);
             buffer.append("]);\n");
 
+            // add flux bound alpha -
+            buffer.append(julia_model_name);
+            buffer.append(".flux_bound_alpha = 1.0;\n");
+
             // object coeff -
             buffer.append(julia_model_name);
             buffer.append(".flux_obj_coeff = 0.0;\n");
@@ -655,7 +667,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         String function_name = property_tree.lookupKwateeDriverFunctionName();
         driver.append("function ");
         driver.append(function_name);
-        driver.append("(time, species_abundance_array, specific_growth_rate, step_size, data_dictionary; steady_state_flag=true)\n");
+        driver.append("(time_index, species_abundance_array, specific_growth_rate, step_size, data_dictionary; steady_state_flag=true)\n");
 
         driver.append("# ----------------------------------------------------------------------------------- #\n");
         driver.append("# ");
@@ -764,8 +776,28 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tspecies_lower_bound = species_model.species_lower_bound;\n");
         driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
         driver.append("\tif steady_state_flag == false \n");
-        driver.append("\t\tspecies_lower_bound = -1*(1 - dsa[species_index]*specific_growth_rate)*species_abundance_array[species_index];\n");
+        driver.append("\t\tspecies_lower_bound = -(1.0/step_size)*(1 - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index];\n");
         driver.append("\t\tspecies_constraint_type = GLPK.LO;\n");
+        driver.append("\tend\n");
+
+        driver.append("\n");
+        driver.append("\t# Is this species measured?\n");
+        driver.append("\tif species_model.is_species_measured == true\n");
+        driver.append("\n");
+        driver.append("\t\tmeasurement_array = species_model.species_measurement_array;\n");
+        driver.append("\t\tmeasured_value = measurement_array[time_index,2];\n");
+        driver.append("\t\tmeasured_value_std = measurement_array[time_index,3];\n");
+        driver.append("\t\tmeasured_value_upper_bound = measured_value + measured_value_std;\n");
+        driver.append("\t\tmeasured_value_lower_bound = measured_value - measured_value_std;\n");
+        driver.append("\n");
+        driver.append("\t\t# Check: is lower bound negative?\n");
+        driver.append("\t\tif (measured_value_lower_bound<0.0)\n");
+        driver.append("\t\t\tmeasured_value_lower_bound = 0.0;\n");
+        driver.append("\t\tend\n");
+        driver.append("\n");
+        driver.append("\t\tspecies_lower_bound =  (1.0/step_size)*(measured_value_lower_bound - (1 - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index]);\n");
+        driver.append("\t\tspecies_upper_bound =  (1.0/step_size)*(measured_value_upper_bound - (1 - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index]);\n");
+        driver.append("\t\tspecies_constraint_type = GLPK.DB;\n");
         driver.append("\tend\n");
         driver.append("\n");
         driver.append("\t# Set the species bounds in GLPK - \n");
