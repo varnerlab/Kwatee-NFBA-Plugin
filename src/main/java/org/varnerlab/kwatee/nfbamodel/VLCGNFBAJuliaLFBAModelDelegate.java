@@ -86,6 +86,12 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\tis_species_measured::Bool\n");
         buffer.append("\tspecies_measurement_array::Array{Float64,3}\n");
         buffer.append("\tspecies_constraint_type::Int32\n");
+        buffer.append("\tspecies_initial_condition::Float64\n");
+        buffer.append("\tis_biomass_precursor::Bool\n");
+        buffer.append("\tbiomass_precursor_coefficient::Float64\n");
+        buffer.append("\tspecies_time_constant::Float64\n");
+        buffer.append("\tis_species_diluted::Bool\n");
+
         buffer.append("\n");
         buffer.append("\t# Constructor - \n");
         buffer.append("\tfunction SpeciesModel()\n");
@@ -389,45 +395,45 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             }
         }
 
-        // ok, we need to setup the bounds parameter array -
-        buffer.append("\n");
-        buffer.append("# Formulate the dilution selection array - \n");
-        buffer.append("dilution_selection_array = [\n");
-        ArrayList<VLCGNFBASpeciesModel> species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
-        int species_index = 1;
-        for (VLCGNFBASpeciesModel species_model : species_model_array) {
-
-            // Get data -
-            String symbol = (String) species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
-
-            // write the line -
-            if (symbol.contains("gene_") == true) {
-
-                buffer.append("\t0.0\t;\t");
-            }
-            else {
-
-                buffer.append("\t1.0\t;\t");
-            }
-
-
-            buffer.append("#\t");
-            buffer.append(species_index);
-            buffer.append("\t");
-            buffer.append(symbol);
-            buffer.append("\n");
-
-            // update the species index -
-            species_index++;
-        }
-        buffer.append("];\n");
+//        // ok, we need to setup the bounds parameter array -
+//        buffer.append("\n");
+//        buffer.append("# Formulate the dilution selection array - \n");
+//        buffer.append("dilution_selection_array = [\n");
+//        ArrayList<VLCGNFBASpeciesModel> species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
+//        int species_index = 1;
+//        for (VLCGNFBASpeciesModel species_model : species_model_array) {
+//
+//            // Get data -
+//            String symbol = (String) species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+//
+//            // write the line -
+//            if (symbol.contains("gene_") == true) {
+//
+//                buffer.append("\t0.0\t;\t");
+//            }
+//            else {
+//
+//                buffer.append("\t1.0\t;\t");
+//            }
+//
+//
+//            buffer.append("#\t");
+//            buffer.append(species_index);
+//            buffer.append("\t");
+//            buffer.append(symbol);
+//            buffer.append("\n");
+//
+//            // update the species index -
+//            species_index++;
+//        }
+//        buffer.append("];\n");
 
         buffer.append("\n");
         buffer.append("# ---------------------------- DO NOT EDIT BELOW THIS LINE -------------------------- #\n");
         buffer.append("data_dictionary = Dict();\n");
         buffer.append("data_dictionary[\"STOICHIOMETRIC_MATRIX\"] = stoichiometric_matrix;\n");
         buffer.append("data_dictionary[\"CONTROL_PARAMETER_ARRAY\"] = control_parameter_array;\n");
-        buffer.append("data_dictionary[\"DILUTION_SELECTION_ARRAY\"] = dilution_selection_array;\n");
+        //buffer.append("data_dictionary[\"DILUTION_SELECTION_ARRAY\"] = dilution_selection_array;\n");
         buffer.append("data_dictionary[\"MIN_FLAG\"] = min_flag;\n");
         buffer.append("data_dictionary[\"SPECIES_MODEL_DICTIONARY\"] = species_model_dictionary;\n");
         buffer.append("data_dictionary[\"FLUX_MODEL_DICTIONARY\"] = flux_model_dictionary;\n");
@@ -459,8 +465,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\n");
 
         // ok - lets build the species models -
-        species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
-        species_index = 1;
+        ArrayList<VLCGNFBASpeciesModel> species_model_array = model_tree.getListOfSpeciesModelsFromModelTree();
+        int species_index = 1;
         for (VLCGNFBASpeciesModel species_model : species_model_array){
 
             // Get data -
@@ -513,6 +519,31 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             // Add the default measurment fields -
             buffer.append(julia_model_name);
             buffer.append(".is_species_measured = false;\n");
+
+            // Add biomass precursor field -
+            buffer.append(julia_model_name);
+            buffer.append(".is_biomass_precursor = false;\n");
+            buffer.append(julia_model_name);
+            buffer.append(".biomass_precursor_coefficient = 0.0;\n");
+
+            // Add a species time constant -
+            buffer.append(julia_model_name);
+            buffer.append(".species_time_constant = 1.0;\n");
+
+            // Add initial condition -
+            buffer.append(julia_model_name);
+            buffer.append(".species_initial_condition = 0.0;\n");
+
+            // Is this species diluted?
+            buffer.append(julia_model_name);
+            if (symbol.contains("gene_") == true || symbol.contains("xt") == true){
+
+                buffer.append(".is_species_diluted = false;\n");
+            }
+            else {
+
+                buffer.append(".is_species_diluted = true;\n");
+            }
 
             // add this model to the array -
             buffer.append("species_model_dictionary[\"");
@@ -769,6 +800,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tspecies_index = species_model.species_index;\n");
         driver.append("\tspecies_symbol = species_model.species_symbol;\n");
         driver.append("\tspecies_constraint_type = species_model.species_constraint_type;\n");
+        driver.append("\ttau = species_model.species_time_constant;\n");
 
         // steady state flag?
         driver.append("\n");
@@ -776,7 +808,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tspecies_lower_bound = species_model.species_lower_bound;\n");
         driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
         driver.append("\tif steady_state_flag == false \n");
-        driver.append("\t\tspecies_lower_bound = -(1.0/step_size)*(1 - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index];\n");
+        driver.append("\t\tspecies_lower_bound = -(1.0/step_size)*(tau - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index];\n");
         driver.append("\t\tspecies_constraint_type = GLPK.LO;\n");
         driver.append("\tend\n");
 
@@ -795,8 +827,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\t\t\tmeasured_value_lower_bound = 0.0;\n");
         driver.append("\t\tend\n");
         driver.append("\n");
-        driver.append("\t\tspecies_lower_bound =  (1.0/step_size)*(measured_value_lower_bound - (1 - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index]);\n");
-        driver.append("\t\tspecies_upper_bound =  (1.0/step_size)*(measured_value_upper_bound - (1 - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index]);\n");
+        driver.append("\t\tspecies_lower_bound =  (1.0/step_size)*(measured_value_lower_bound - (tau - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index]);\n");
+        driver.append("\t\tspecies_upper_bound =  (1.0/step_size)*(measured_value_upper_bound - (tau - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index]);\n");
         driver.append("\t\tspecies_constraint_type = GLPK.DB;\n");
         driver.append("\tend\n");
         driver.append("\n");
