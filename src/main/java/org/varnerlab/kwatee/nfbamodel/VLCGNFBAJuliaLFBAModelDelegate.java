@@ -91,6 +91,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\tbiomass_precursor_coefficient::Float64\n");
         buffer.append("\tspecies_time_constant::Float64\n");
         buffer.append("\tis_species_diluted::Bool\n");
+        buffer.append("\tis_species_extracellular::Bool\n");
 
         buffer.append("\n");
         buffer.append("\t# Constructor - \n");
@@ -541,13 +542,23 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
             // Is this species diluted?
             buffer.append(julia_model_name);
-            if (symbol.contains("gene_") == true || symbol.contains("xt") == true){
+            if (symbol.contains("gene") == true || symbol.contains("xt") == true){
 
                 buffer.append(".is_species_diluted = false;\n");
             }
             else {
 
                 buffer.append(".is_species_diluted = true;\n");
+            }
+
+            // is this species extracellular?
+            if (symbol.contains("xt") == true){
+
+                buffer.append(".is_species_extracellular = true;\n");
+            }
+            else {
+
+                buffer.append(".is_species_extracellular = false;\n");
             }
 
             // add this model to the array -
@@ -813,10 +824,16 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tspecies_lower_bound = species_model.species_lower_bound;\n");
         driver.append("\tspecies_upper_bound = species_model.species_upper_bound;\n");
         driver.append("\tif steady_state_flag == false \n");
-        driver.append("\t\tspecies_lower_bound = -(1.0/step_size)*(tau - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index];\n");
-        driver.append("\t\tspecies_constraint_type = GLPK.LO;\n");
-        driver.append("\tend\n");
 
+        // Check - is the species extracellular?
+        driver.append("\n");
+        driver.append("\t\tif (species_model.is_species_extracellular == false)\n");
+        driver.append("\t\t\tspecies_lower_bound = -(1.0/step_size)*(tau - dsa[species_index]*step_size*specific_growth_rate)*species_abundance_array[species_index];\n");
+        driver.append("\t\t\tspecies_constraint_type = GLPK.LO;\n");
+        driver.append("\t\telse\n");
+        driver.append("\t\t\tspecies_lower_bound = -(1.0/(cellmass*step_size))*(tau*species_abundance_array[species_index])\n");
+        driver.append("\t\t\tspecies_constraint_type = GLPK.LO;\n");
+        driver.append("\t\tend");
         driver.append("\n");
         driver.append("\t# Is this species measured?\n");
         driver.append("\tif species_model.is_species_measured == true\n");
