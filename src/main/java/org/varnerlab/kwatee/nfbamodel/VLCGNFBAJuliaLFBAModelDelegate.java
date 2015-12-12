@@ -245,8 +245,13 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
         // Logic block -
         buffer.append("\n");
-        buffer.append("# Bound update logic goes here .... \n");
-        buffer.append("# ... \n");
+        buffer.append("# Bound update logic -> default: power law bounds update \n");
+        buffer.append("if (isempty(find(gamma_array.>0)) == false)\n");
+        buffer.append("\teta = 0.9\n");
+        buffer.append("\tlower_bound = (1-eta)*alpha*prod(tmp_array)*control_variable\n");
+        buffer.append("\tupper_bound = (1+eta)alpha*prod(tmp_array)*control_variable\n");
+        buffer.append("\tconstraint_type = GLPK.DB\n");
+        buffer.append("end\n");
 
         // global checks -
         buffer.append("\n");
@@ -698,7 +703,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         String function_name = property_tree.lookupKwateeDriverFunctionName();
         driver.append("function ");
         driver.append(function_name);
-        driver.append("(time_index, species_abundance_array, specific_growth_rate, step_size, data_dictionary; steady_state_flag=true)\n");
+        driver.append("(time_index, species_abundance_array, specific_growth_rate, dsa, step_size, data_dictionary; steady_state_flag=true)\n");
 
         driver.append("# ----------------------------------------------------------------------------------- #\n");
         driver.append("# ");
@@ -733,7 +738,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
         // Get the stoichiometric array -
         driver.append("# Get the stoichiometric_matrix from data_dictionary - \n");
-        driver.append("dsa = data_dictionary[\"DILUTION_SELECTION_ARRAY\"];\n");
+        //driver.append("dsa = data_dictionary[\"DILUTION_SELECTION_ARRAY\"];\n");
         driver.append("stoichiometric_matrix = data_dictionary[\"STOICHIOMETRIC_MATRIX\"];\n");
         driver.append("(number_of_species,number_of_fluxes) = size(stoichiometric_matrix);\n");
 
