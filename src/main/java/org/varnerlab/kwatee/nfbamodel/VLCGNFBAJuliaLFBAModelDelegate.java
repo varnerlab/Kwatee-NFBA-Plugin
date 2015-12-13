@@ -552,6 +552,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
             }
 
             // is this species extracellular?
+            buffer.append(julia_model_name);
             if (symbol.contains("xt") == true){
 
                 buffer.append(".is_species_extracellular = true;\n");
@@ -714,7 +715,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         String function_name = property_tree.lookupKwateeDriverFunctionName();
         driver.append("function ");
         driver.append(function_name);
-        driver.append("(time_index, species_abundance_array, specific_growth_rate, dsa, step_size, data_dictionary; steady_state_flag=true)\n");
+        driver.append("(time_index, species_abundance_array, specific_growth_rate, cellmass, dsa, step_size, data_dictionary; steady_state_flag=true)\n");
 
         driver.append("# ----------------------------------------------------------------------------------- #\n");
         driver.append("# ");
@@ -833,7 +834,8 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\t\telse\n");
         driver.append("\t\t\tspecies_lower_bound = -(1.0/(cellmass*step_size))*(tau*species_abundance_array[species_index])\n");
         driver.append("\t\t\tspecies_constraint_type = GLPK.LO;\n");
-        driver.append("\t\tend");
+        driver.append("\t\tend\n");
+        driver.append("\tend\n");
         driver.append("\n");
         driver.append("\t# Is this species measured?\n");
         driver.append("\tif species_model.is_species_measured == true\n");
