@@ -907,6 +907,14 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         driver.append("\tcalculated_flux_array[flux_index] = GLPK.get_col_prim(lp_problem, flux_index);\n");
         driver.append("end\n");
 
+        // shadow prices -
+        driver.append("\n");
+        driver.append("# Get the dual values - \n");
+        driver.append("dual_value_array = zeros(Float64,number_of_fluxes);\n");
+        driver.append("for flux_index in flux_index_vector\n");
+	      driver.append("\tdual_value_array[flux_index] = GLPK.get_col_dual(lp_problem, flux_index);\n");
+        driver.append("end\n");
+
         // Calculate the uptake_array -
         driver.append("\n");
         driver.append("# Calculate the uptake array - \n");
@@ -915,7 +923,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         // Return -
         driver.append("\n");
         driver.append("# Formulate the return tuple -\n");
-        driver.append("return (objective_value, calculated_flux_array, uptake_array, exit_flag);\n");
+        driver.append("return (objective_value, calculated_flux_array, dual_value_array, uptake_array, exit_flag);\n");
         driver.append("end\n");
 
 //        // bounds model -
