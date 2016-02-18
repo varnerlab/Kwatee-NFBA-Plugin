@@ -164,7 +164,10 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
 
         String class_name_key = _package_name_parser_delegate + ".VLCGFBABiochemistryReactionParserDelegate";
         Vector<VLCGNFBAModelComponent> biochemistry_component_vector = _model_component_table.get(Class.forName(class_name_key));
-        number_of_records = biochemistry_component_vector.size();
+
+        if (biochemistry_component_vector != null){
+            number_of_records = biochemistry_component_vector.size();
+        }
 
         return number_of_records;
     }
@@ -175,7 +178,10 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
 
         String gene_expression_class_name_key = _package_name_parser_delegate + ".VLCGNFBAGeneExpressionParserDelegate";
         Vector<VLCGNFBAModelComponent> gene_expression_component_vector = _model_component_table.get(Class.forName(gene_expression_class_name_key));
-        number_of_records = gene_expression_component_vector.size();
+
+        if (gene_expression_component_vector != null){
+          number_of_records = gene_expression_component_vector.size();
+        }
 
         return number_of_records;
     }
@@ -186,7 +192,10 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
 
         String translation_class_name_key = _package_name_parser_delegate + ".VLCGNFBATranslationParserDelegate";
         Vector<VLCGNFBAModelComponent> translation_component_vector = _model_component_table.get(Class.forName(translation_class_name_key));
-        number_of_records = translation_component_vector.size();
+
+        if (translation_component_vector != null){
+            number_of_records = translation_component_vector.size();
+        }
 
         return number_of_records;
     }
@@ -199,6 +208,11 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
 
         String translation_class_name_key = _package_name_parser_delegate + ".VLCGNFBABiochemistryControlParserDelegate";
         Vector<VLCGNFBAModelComponent> model_component_vector = _model_component_table.get(Class.forName(translation_class_name_key));
+
+        if (model_component_vector == null){
+          return buffer.toString();
+        }
+
         for (VLCGNFBAModelComponent model_component: model_component_vector){
 
             // Cast -
@@ -239,6 +253,11 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
 
         String translation_class_name_key = _package_name_parser_delegate + ".VLCGNFBAGeneExpressionControlParserDelegate";
         Vector<VLCGNFBAModelComponent> model_component_vector = _model_component_table.get(Class.forName(translation_class_name_key));
+
+        if (model_component_vector == null){
+          return buffer.toString();
+        }
+
         for (VLCGNFBAModelComponent model_component: model_component_vector){
 
             // Cast -
@@ -280,6 +299,11 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
 
         String translation_class_name_key = _package_name_parser_delegate + ".VLCGNFBATranslationParserDelegate";
         Vector<VLCGNFBAModelComponent> translation_component_vector = _model_component_table.get(Class.forName(translation_class_name_key));
+
+        if (translation_component_vector == null){
+          return buffer.toString();
+        }
+
         for (VLCGNFBAModelComponent model_component: translation_component_vector) {
 
             // Cast -
@@ -333,44 +357,48 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
 
         String gene_expression_class_name_key = _package_name_parser_delegate + ".VLCGNFBAGeneExpressionParserDelegate";
         Vector<VLCGNFBAModelComponent> gene_expression_component_vector = _model_component_table.get(Class.forName(gene_expression_class_name_key));
-        for (VLCGNFBAModelComponent model_component: gene_expression_component_vector) {
 
-            // Cast -
-            VLCGNFBAGeneExpressionModel reaction_model = (VLCGNFBAGeneExpressionModel)model_component;
+        if (gene_expression_component_vector != null){
 
-            // Get data from the model -
-            String enzyme_symbol = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_RNA_POLYMERASE_SYMBOL);
-            String gene_symbol = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_GENE_SYMBOL);
-            String rna_symbol = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_MRNA_SYMBOL);
-            String reaction_name = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_REACTION_NAME);
-            String formatted_record = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_REACTION_RAW_STRING);
+          for (VLCGNFBAModelComponent model_component: gene_expression_component_vector) {
 
-            // Write the record -
-            buffer.append("\t<reaction index=\"");
-            buffer.append(reaction_counter++);
-            buffer.append("\" name=\"");
-            buffer.append(reaction_name);
-            buffer.append("\" enzyme_symbol=\"");
-            buffer.append(enzyme_symbol);
-            buffer.append("\" type=\"EXPRESSION");
-            buffer.append("\" formatted_record=\"");
-            buffer.append(formatted_record);
-            buffer.append("\">\n");
+              // Cast -
+              VLCGNFBAGeneExpressionModel reaction_model = (VLCGNFBAGeneExpressionModel)model_component;
 
-            // list of reactants -
-            buffer.append("\t\t<listOfReactants>\n");
-            buffer.append("\t\t\t<speciesReference species=\"");
-            buffer.append(gene_symbol);
-            buffer.append("\" stoichiometry=\"1.0\"/>\n");
-            buffer.append("\t\t</listOfReactants>\n");
+              // Get data from the model -
+              String enzyme_symbol = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_RNA_POLYMERASE_SYMBOL);
+              String gene_symbol = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_GENE_SYMBOL);
+              String rna_symbol = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_MRNA_SYMBOL);
+              String reaction_name = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_REACTION_NAME);
+              String formatted_record = (String)reaction_model.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_REACTION_RAW_STRING);
 
-            // list of products -
-            buffer.append("\t\t<listOfProducts>\n");
-            buffer.append("\t\t\t<speciesReference species=\"");
-            buffer.append(rna_symbol);
-            buffer.append("\" stoichiometry=\"1.0\"/>\n");
-            buffer.append("\t\t</listOfProducts>\n");
-            buffer.append("\t</reaction>\n");
+              // Write the record -
+              buffer.append("\t<reaction index=\"");
+              buffer.append(reaction_counter++);
+              buffer.append("\" name=\"");
+              buffer.append(reaction_name);
+              buffer.append("\" enzyme_symbol=\"");
+              buffer.append(enzyme_symbol);
+              buffer.append("\" type=\"EXPRESSION");
+              buffer.append("\" formatted_record=\"");
+              buffer.append(formatted_record);
+              buffer.append("\">\n");
+
+              // list of reactants -
+              buffer.append("\t\t<listOfReactants>\n");
+              buffer.append("\t\t\t<speciesReference species=\"");
+              buffer.append(gene_symbol);
+              buffer.append("\" stoichiometry=\"1.0\"/>\n");
+              buffer.append("\t\t</listOfReactants>\n");
+
+              // list of products -
+              buffer.append("\t\t<listOfProducts>\n");
+              buffer.append("\t\t\t<speciesReference species=\"");
+              buffer.append(rna_symbol);
+              buffer.append("\" stoichiometry=\"1.0\"/>\n");
+              buffer.append("\t\t</listOfProducts>\n");
+              buffer.append("\t</reaction>\n");
+          }
         }
 
         // return buffer -
@@ -515,84 +543,93 @@ public class VLCGNFBAParseVarnerNFBAFlatFile implements VLCGInputHandler {
         // Get genes symbols -
         String gene_expression_class_name_key = _package_name_parser_delegate + ".VLCGNFBAGeneExpressionParserDelegate";
         Vector<VLCGNFBAModelComponent> gene_expression_component_vector = _model_component_table.get(Class.forName(gene_expression_class_name_key));
-        for (VLCGNFBAModelComponent model_component: gene_expression_component_vector) {
+        if (gene_expression_component_vector != null){
 
-            // Get the gene name -
-            String gene_symbol = (String)model_component.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_GENE_SYMBOL);
+          for (VLCGNFBAModelComponent model_component: gene_expression_component_vector) {
 
-            // add this to the global list -
-            if (tmp_species_symbol_vector.contains(gene_symbol) == false){
-                tmp_species_symbol_vector.addElement(gene_symbol);
-            }
+              // Get the gene name -
+              String gene_symbol = (String)model_component.getModelComponent(VLCGNFBAGeneExpressionModel.GENE_EXPRESSION_GENE_SYMBOL);
+
+              // add this to the global list -
+              if (tmp_species_symbol_vector.contains(gene_symbol) == false){
+                  tmp_species_symbol_vector.addElement(gene_symbol);
+              }
+          }
         }
+
 
         // Get the mRNA symbols -
         String translation_class_name_key = _package_name_parser_delegate + ".VLCGNFBATranslationParserDelegate";
         Vector<VLCGNFBAModelComponent> translation_component_vector = _model_component_table.get(Class.forName(translation_class_name_key));
-        for (VLCGNFBAModelComponent model_component: translation_component_vector) {
+        if (translation_component_vector != null){
+          for (VLCGNFBAModelComponent model_component: translation_component_vector) {
 
-            // Get the gene name -
-            String mRNA_symbol = (String)model_component.getModelComponent(VLCGNFBATranslationModel.TRANSLATION_MRNA_SYMBOL);
+              // Get the gene name -
+              String mRNA_symbol = (String)model_component.getModelComponent(VLCGNFBATranslationModel.TRANSLATION_MRNA_SYMBOL);
 
-            // add this to the global list -
-            if (tmp_species_symbol_vector.contains(mRNA_symbol) == false){
-                tmp_species_symbol_vector.addElement(mRNA_symbol);
-            }
+              // add this to the global list -
+              if (tmp_species_symbol_vector.contains(mRNA_symbol) == false){
+                  tmp_species_symbol_vector.addElement(mRNA_symbol);
+              }
+          }
+
+          // Get the species generated by translation -
+          for (VLCGNFBAModelComponent model_component: translation_component_vector) {
+
+              // Get the gene name -
+              String protein_symbol = (String) model_component.getModelComponent(VLCGNFBATranslationModel.TRANSLATION_PROTEIN_SYMBOL);
+
+              // add this to the global list -
+              if (tmp_species_symbol_vector.contains(protein_symbol) == false) {
+                  tmp_species_symbol_vector.addElement(protein_symbol);
+              }
+          }
         }
-
-        // Get the species generated by translation -
-        for (VLCGNFBAModelComponent model_component: translation_component_vector) {
-
-            // Get the gene name -
-            String protein_symbol = (String) model_component.getModelComponent(VLCGNFBATranslationModel.TRANSLATION_PROTEIN_SYMBOL);
-
-            // add this to the global list -
-            if (tmp_species_symbol_vector.contains(protein_symbol) == false) {
-                tmp_species_symbol_vector.addElement(protein_symbol);
-            }
-        }
-
 
         // Get the biochemistry reactions -
         String class_name_key = _package_name_parser_delegate + ".VLCGFBABiochemistryReactionParserDelegate";
         Vector<VLCGNFBAModelComponent> biochemistry_component_vector = _model_component_table.get(Class.forName(class_name_key));
-        for (VLCGNFBAModelComponent model_component: biochemistry_component_vector){
+        if (biochemistry_component_vector != null){
 
-            // Get the enzyme symbol -
-            String enzyme_symbol = (String)model_component.getModelComponent(VLCGNFBABiochemistryReactionModel.REACTION_ENZYME_SYMBOL);
+          for (VLCGNFBAModelComponent model_component: biochemistry_component_vector){
 
-            // Add the enzyme symbol?
-            if (tmp_species_symbol_vector.contains(enzyme_symbol) == false) {
-                tmp_species_symbol_vector.addElement(enzyme_symbol);
-            }
+              // Get the enzyme symbol -
+              String enzyme_symbol = (String)model_component.getModelComponent(VLCGNFBABiochemistryReactionModel.REACTION_ENZYME_SYMBOL);
 
-            // Get the reactant species symbol vector from the model component -
-            Vector<VLCGNFBASpeciesModel> reactant_vector = (Vector)model_component.getModelComponent(VLCGNFBABiochemistryReactionModel.BIOCHEMISTRY_REACTION_REACTANT_VECTOR);
-            for (VLCGNFBASpeciesModel species_model : reactant_vector){
+              // Add the enzyme symbol?
+              if (tmp_species_symbol_vector.contains(enzyme_symbol) == false) {
+                  tmp_species_symbol_vector.addElement(enzyme_symbol);
+              }
 
-                // Get the reactant string -
-                String reactant_symbol = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+              // Get the reactant species symbol vector from the model component -
+              Vector<VLCGNFBASpeciesModel> reactant_vector = (Vector)model_component.getModelComponent(VLCGNFBABiochemistryReactionModel.BIOCHEMISTRY_REACTION_REACTANT_VECTOR);
+              for (VLCGNFBASpeciesModel species_model : reactant_vector){
 
-                // check -
-                if (tmp_species_symbol_vector.contains(reactant_symbol) == false){
+                  // Get the reactant string -
+                  String reactant_symbol = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
 
-                    tmp_species_symbol_vector.addElement(reactant_symbol);
-                }
-            }
+                  // check -
+                  if (tmp_species_symbol_vector.contains(reactant_symbol) == false){
 
-            // Get the product symbol -
-            Vector<VLCGNFBASpeciesModel> product_vector = (Vector)model_component.getModelComponent(VLCGNFBABiochemistryReactionModel.BIOCHEMISTRY_REACTION_PRODUCT_VECTOR);
-            for (VLCGNFBASpeciesModel species_model : product_vector){
+                      tmp_species_symbol_vector.addElement(reactant_symbol);
+                  }
+              }
 
-                // Get the reactant string -
-                String product_symbol = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+              // Get the product symbol -
+              Vector<VLCGNFBASpeciesModel> product_vector = (Vector)model_component.getModelComponent(VLCGNFBABiochemistryReactionModel.BIOCHEMISTRY_REACTION_PRODUCT_VECTOR);
+              for (VLCGNFBASpeciesModel species_model : product_vector){
 
-                // check -
-                if (tmp_species_symbol_vector.contains(product_symbol) == false){
-                    tmp_species_symbol_vector.addElement(product_symbol);
-                }
-            }
+                  // Get the reactant string -
+                  String product_symbol = (String)species_model.getModelComponent(VLCGNFBASpeciesModel.SPECIES_SYMBOL);
+
+                  // check -
+                  if (tmp_species_symbol_vector.contains(product_symbol) == false){
+                      tmp_species_symbol_vector.addElement(product_symbol);
+                  }
+              }
+          }
         }
+
 
         // ok, we have a unqiue list of species models -
         for (String species_symbol: tmp_species_symbol_vector){
