@@ -84,7 +84,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
         buffer.append("\tspecies_lower_bound::Float64\n");
         buffer.append("\tspecies_upper_bound::Float64\n");
         buffer.append("\tis_species_measured::Bool\n");
-        buffer.append("\tspecies_measurement_array::Array{Float64,3}\n");
+        buffer.append("\tspecies_measurement_array::Array{Float64,2}\n");
         buffer.append("\tspecies_constraint_type::Int32\n");
         buffer.append("\tspecies_initial_condition::Float64\n");
         buffer.append("\tis_biomass_precursor::Bool\n");
