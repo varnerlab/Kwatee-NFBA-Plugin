@@ -542,7 +542,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
             // Is this species diluted?
             buffer.append(julia_model_name);
-            if (symbol.contains("gene") == true || symbol.contains("xt") == true){
+            if (symbol.contains("gene") == true || symbol.contains("xt") == true || symbol.contains("_e") == true){
 
                 buffer.append(".is_species_diluted = false;\n");
             }
@@ -553,7 +553,7 @@ public class VLCGNFBAJuliaLFBAModelDelegate {
 
             // is this species extracellular?
             buffer.append(julia_model_name);
-            if (symbol.contains("xt") == true){
+            if (symbol.contains("xt") == true || symbol.contains("_e") == true){
 
                 buffer.append(".is_species_extracellular = true;\n");
             }
